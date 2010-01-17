@@ -1,0 +1,7 @@
+PRGNAM=erlang
+VERSION=R11B_4
+HOMEPAGE=http://erlang.org/
+DOWNLOAD=http://erlang.org/download/otp_src_R11B-4.tar.gz
+MD5SUM=649e6f057e6996f92c8496161d754d8d
+AUTHOR=Ismael Cortes
+EMAIL=leamsi.setroc@gmail.com

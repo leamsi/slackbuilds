@@ -1,0 +1,246 @@
+#!/bin/sh
+#
+# Isn't the ${X:-x} syntaxis a BASHism, anyway?
+
+#Build Script for erlang (tested with version(s):
+#    R11B-3, R11B-4)
+# It can be obtained at http://www.erlang.org
+#
+
+# Written by Ismael Cortes (leamsi.setroc@gmail.com)
+
+# This is a rewrite of a SlackBuild I had originally
+# wrote.  Hopefully it  meet  the (high)  slackbuild
+# standars
+#
+# I, as writer and author, give this script and its
+# intelectual property to the public domain.
+
+# For debugging propouses.
+set -x
+
+PRGNAM=erlang
+VERSION=R11B_4
+ARCH=${ARCH:-i486}
+BUILD=${BUILD:-1}
+TAG=${TAG:-_SBo}
+CWD=$(pwd)
+TMP=${TMP:-/tmp/SBo}
+PKG=$TMP/package-$PRGNAM
+OUTPUT=${OUTPUT:-/tmp}
+
+if [ "$ARCH" = "i486" ] ; then
+    SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ] ; then
+    # Some people want it this way...
+    SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+fi
+
+# Sanity check. If you ever get this warning, then
+# you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ] ; then
+    echo "$0: Fatal: PKG directory is root! ($PKG)"
+    exit 1
+fi
+if [ "$TMP" = "/" -o "$TMP" = "" ] ; then
+    echo "$0: Fatal TMP directory is root! ($TMP)"
+    exit 1
+fi
+
+# Where to  install stuff. Some people  prefer to use
+# /usr/local for non-standard things.
+# NOTE: If you change this, make sure to reflect your
+# changes in the doinst.sh
+INSTALLPREFIX=${INSTALLPREFIX:-/usr}
+
+# Where  the source  files  are  located (default  is
+# current dir)
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+
+# The version of the files. R11B-3.
+SRC_VERSION=$(echo $VERSION | sed -e's:_:-:')
+
+
+# The main source file.
+SOURCE_FILE=otp_src_${SRC_VERSION}.tar.gz
+
+# The name of the untared directory
+EXTRACTED_DIR=otp_src_${SRC_VERSION}
+
+# Man pages. I recomend you to add them (barely
+# 500kb)
+MAN_FILE=otp_doc_man_${SRC_VERSION}.tar.gz
+
+# FULL documentation. You only need this if you don't
+# like the  online documentation.  I like to  have it
+# packaged into /usr/doc/erlang-VERSION/doc  so I can
+# use Recoll to search it,  but it adds another 4Megs
+# to download and install.
+FULLDOC_FILE=otp_doc_html_${SRC_VERSION}.tar.gz
+
+
+
+# This variable holds files (relative to the
+# unpackaged source file).
+DOCFILES="AUTHORS EPLICENCE README"
+
+# If  you experience  threading  issues when  running
+# under a 2.4 kernel, you may have to use
+#    --disable-hipe
+# OR 
+#    --disable-threads 
+# (I believe the later is  the best option, you still
+# get concurrency, don't worry).
+#  A small description about them:
+#  -hipe stands for HIgh Performance Erlang, allows
+#    the erlang compiler to  compile to machine code.
+#    (Kind of JIT-compiler).
+#  -smp   allows  SMP   support  (mostly   procesor
+#    balance).  It won't  hurt by  default (try  "erl
+#    -smp" or "erl -smp auto").
+#  -threads  makes  use  of  the  native  threading
+#    system  for  use  of lightweight  processes.  It
+#    doesn't bring much to  performance, but in a SMP
+#    machine it might help a lot.
+PKGCONFIG="--enable-hipe \
+--enable-smp \
+--enable-threads"
+
+if [ -d $TMP/$EXTRACTED_DIR ] ; then
+    rm -rf $TMP/$EXTRACTED_DIR || exit 1
+fi
+
+mkdir -p $TMP $OUTPUT || exit 1
+
+
+if [  -d $PKG ] ; then
+   # Remove evidence of last build
+   rm -rf $PKG || exit 1
+fi
+
+mkdir -p $PKG || exit 1
+
+cd $TMP || exit 1
+
+# Extract source code.
+tar zxvf $SOURCE_DIR/$SOURCE_FILE || exit 1
+
+cd $EXTRACTED_DIR || exit 1
+
+#Configure this thing.
+CFLAGS="$SLKCFLAGS" \
+CXXFLAGS="$SLKCXXFLAGS" \
+./configure \
+--prefix=${INSTALLPREFIX} \
+--sysconfdir=/etc \
+--localstatedir=/var \
+$PKGCONFIG \
+--build=i486-slackware-linux || exit 2
+
+# The TARGET= thing is to make it uses the generated 
+# configuration.
+#
+# NOTE: DO NOT USE A -j flag for MAKE, it will break
+# compilation.
+make TARGET=i486-slackware-linux-gnu || exit 2
+
+make install \
+TARGET=i486-slackware-linux-gnu \
+INSTALL_PREFIX=$PKG || exit 2
+
+# Fix symbolic links problems
+find $PKG -type l | while read lnk ; do
+    target=$(readlink $lnk)
+    echo "Fixing link $lnk:"
+    echo "     from $target to" ${target/"$PKG"/}
+    rm -f $lnk || exit 3
+    ln -sf ${target/"$PKG"/} $lnk || exit 3
+done
+
+# Install documentation if present.
+#
+# I believe the errors here are not fatal, is this
+# right?
+if [ -r $SOURCE_DIR/$FULLDOC_FILE ] ; then
+    (cd ${PKG}${INSTALLPREFIX}/lib/erlang
+    tar zvxf $SOURCE_DIR/$FULLDOC_FILE
+    # Add a symlink to /usr/doc/blah-blah/doc
+    mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
+    ln -s ${INSTALLPREFIX}/lib/erlang/doc \
+    ${PKG}/usr/doc/$PRGNAM-$VERSION/doc
+    )
+fi
+
+# There's a separate SlackBuild which also does this.
+if [ -r $SOURCE_DIR/$MAN_FILE ] ; then
+    (cd ${PKG}${INSTALLPREFIX}/lib/erlang
+    tar zxvf $SOURCE_DIR/$MAN_FILE
+    # Gzip man pages
+    # Yes, Erlang (at least R11B4) seems able to read gzipped
+    # man pages.
+    if [ -d ${PKG}${INSTALLPREFIX}/lib/erlang/man ]; then
+        gzip -9 ${PKG}${INSTALLPREFIX}/lib/erlang/man/*/* || exit
+    fi
+    # Just add the section 1 man pages to /usr/man
+    # mostly to avoid clutter and overwrite of other man pages.
+    mkdir -p $PKG/usr/man/man1
+    cd $PKG/usr/man/man1
+    for file in ${PKG}${INSTALLPREFIX}/lib/erlang/man/man1/*.1* ; do
+        ln -sf ${file/"$ROOTDIR"/} $(basename $file)
+    done
+    )
+fi
+
+# Remove useless stuff:
+if [ -d ${PKG}${INSTALLPREFIX}/lib/erlang/man ] ; then
+    # This man page only applies to Windows. We don't
+    # need it.
+    rm -f ${PKG}${INSTALLPREFIX}/lib/erlang/man/{man,cat}1/erlsrv.1*
+    # Remove symlink also.
+    rm -f ${PKG}/usr/man/{man,cat}1/erlsrv.1*
+fi
+
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION || exit 3
+
+# Copy doc files
+for i in $DOCFILES; do
+    if [ -e $i ]; then
+        cp $i $PKG/usr/doc/$PRGNAM-$VERSION || exit 3
+        chmod go-w $PKG/usr/doc/$PRGNAM-$VERSION/$i || exit 3
+    fi
+done
+
+
+cat $CWD/erlang.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/erlang.SlackBuild
+
+# Do the stripping.
+(cd $PKG
+find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+)
+
+ 
+mkdir $PKG/install || exit 3
+
+# Install the slack-desc
+cp $CWD/slack-desc $PKG/install/slack-desc || exit 3
+cp $CWD/doinst.sh $PKG/install/doinst.sh || exit 3
+
+
+
+# Just to be sure...
+chown -R root:root $PKG || exit 3
+
+# Fix permissions.
+find $PKG \( -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 \)  -exec chmod 644 '{}' '+' , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 \) -exec chmod 755 '{}' '+' , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 \) -exec chmod 755 '{}' '+'
+
+# Here goes the package :)
+cd $PKG || exit 3
+/sbin/makepkg -p -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-${BUILD}${TAG}.tgz \
+| tee makepkg.log \
+|| exit 3
+
+exit 0

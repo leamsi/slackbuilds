@@ -1,0 +1,1 @@
+http://easynews.dl.sourceforge.net/sourceforge/qjackctl/qjackctl-0.2.20.tar.gz

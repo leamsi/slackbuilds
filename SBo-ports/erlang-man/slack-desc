@@ -1,0 +1,12 @@
+      |-----handy-ruler------------------------------------------------------|
+erlang-man: erlang-man (Man pages for Erlang).
+erlang-man:
+erlang-man: Erlang is a  general purpose programming language  and RT enviroment.
+erlang-man: It  has  built-in support  for  concurrency,  distribution and  fault
+erlang-man: tolerance. It is used in several large telecommunication systems from
+erlang-man: Ericsson, and  is best suited  for distributed, reliable  and/or soft
+erlang-man: real-time concurrent systems.
+erlang-man:
+erlang-man: This packages includes the man pages of erlang.
+erlang-man:
+erlang-man: Make sure to read www.erlang.org for more information.

@@ -1,0 +1,328 @@
+#!/bin/sh
+# Copyright (c) 2006 Carlos Corbacho <cathectic AT gmail DOT com>
+# Distributed under the terms of the GNU General Public License, Version 2
+#
+# SlackBuild Script for OpenOffice.org 2.0
+# Version: 0.6.3 (2005-02-03)
+#
+# Installation:
+# 1) Save this script to the same directory as the file you downloaded
+#    from OpenOffice.org
+# 2) Update VERSION and INPUT if need be
+# 3) Change 'FOLDALL' depending on if you want one large 'super package'
+#    or individual ones (packages can be excluded futher down in the script
+#    where marked to do so.) - the default is to provide you with lots of
+#    different packages, so you can choose which to install later.
+# 4) Change to root (su, etc... if you use sudo, you must have /sbin in your path for makepkg)
+# 6) Run: sh ooo.SlackBuild [--cleanup]
+# 7) Sit back. 
+# 8) Your completed packages will be dumped to /tmp
+#
+# Slamd64 users: Disable Java in OOo, otherwise OOo will run horribly slow!
+#
+# Language notes:
+# You can find an entire tar.gz with your local language in here:
+# ftp://ftp.linux.cz/pub/localization/OpenOffice.org/devel/680/OOA680_m1/Build-1/
+# (It saves having to go and dig up the language packs seperately. Modify INPUT
+# accordingly if you use one of their builds)
+
+# Set initial variables:
+CWD=`pwd`
+PKG=/tmp/package-ooo
+
+# Change to the version of OOo you are using this script with
+VERSION=2.0.1
+
+# 2.0 hack - directory versions don't match package name versions
+S_VERSION=2.0
+
+# Most of the packages are i586. Edit this only if that changes
+ARCH=${ARCH:-i586}
+
+# Most OOo packages are build 1 - edit this if that changes
+BUILD=1
+
+# Change to the name of the file you downloaded from OOo
+# Usually in the form of: OOo_$VERSION_LinuxIntel_install.tar.gz
+INPUT=OOo_${VERSION}_LinuxIntel_install.tar.gz
+
+# Destination of outputted files
+DESTINATION=/tmp
+
+if [ ! -r $INPUT ]; then
+echo "Cannot find $INPUT Terminating..."
+echo "Check that VERSION and INPUT are correct, and that you are running this SlackBuild in the same \
+directory as the input file."
+exit
+fi
+
+# Say "yes" here if you want menus to be built
+# Say "no" if you don't
+MENU=yes
+
+# Say "yes" here if you want descriptions to be added (say 'yes' here if you also want to fold any packages
+#   into another
+# Say "no" if you don't (if you say 'yes' to FOLDALL, this is set to 'yes')
+DESCRIPTION=yes
+
+# Say "yes" here if you to fold all packages into one
+# Say "no" if you don't
+FOLDALL=no
+
+# Say "yes" here if you just want all core packages to be folded into one
+# Say "no" if you don't
+FOLDCORE=yes
+
+# Say "yes" here if you want spellcheck folded into core01/core
+# Say "no" if you don't
+FOLDSPELL=yes
+
+# Do *not* touch this - it sets the correct variables for 'FOLDALL'
+if [ $FOLDALL = yes ]; then
+  FOLDCORE=no
+  FOLDSPELL=no
+  DESCRIPTION=yes
+fi
+
+# Prepare a package directory
+function preparePackage
+{
+      mkdir $PKG/package
+      cd $PKG/package
+}
+
+# Extract a package, and then delete the original RPM file
+# Argument 1: Package Name
+# Argument 2: Architecture
+function extractPackage
+{
+      RPM=openoffice.org-$1-$VERSION-$2-$BUILD.rpm
+
+      rpm2cpio $PKG/$RPM | cpio -imd -R 0:0 2> /dev/null
+      rm $PKG/$RPM
+#      chown -R root.root .
+
+      # Fix directory permissions problem
+      find . -type d -perm 700 -exec chmod 755 {} \;
+}
+
+# Build a package and cleanup
+# Argument 1: Package Name
+# Argument 2: Architecture
+# Argument 3: slack-desc file name
+function buildPackage
+{
+      mkdir $PKG/package/install
+      cat $CWD/${3} > $PKG/package/install/slack-desc
+      makepkg -l y -c n $PKG/openoffice.org-$1-$VERSION-$2-$BUILD.tgz
+      cd $PKG
+      rm -rf $PKG/package 
+}
+
+
+rm -rf $PKG
+mkdir -p $PKG
+cd $PKG
+tar xzvf $CWD/$INPUT
+
+# If we can't find the RPMS directory, find it and put it somewhere
+# that it can be accessed
+if [ ! -r RPMS ]; then
+  find . -name "RPMS" | xargs -i'{}' mv '{}' $PKG
+fi
+
+cd $PKG/RPMS
+
+# Add desktop integration RPMS to the other RPMS
+mv $PKG/RPMS/desktop-integration/* $PKG/RPMS
+
+# Delete the RedHat, Mandrake/ Mandriva and Free Desktop menus
+# Do *not* add SuSE here - that package is needed later
+rm $PKG/RPMS/openoffice.org-redhat*
+rm $PKG/RPMS/openoffice.org-mandr*
+rm $PKG/RPMS/openoffice.org-freedesktop*
+rm $PKG/RPMS/openoffice.org-debian*
+
+# Add any other packages you don't want here in the form
+# rm $PKG/RPMS/openofficeorg-$PACKAGENAME*
+
+# Rename the TGZs to match the Slackware format of
+# $PROGRAM-$VERSION-$ARCH-$REVISION.tgz/rpm
+
+echo "Renaming packages to match Slackware format"
+
+rename -$BUILD.noarch -noarch-$BUILD $PKG/RPMS/*
+rename -$BUILD.$ARCH -$ARCH-$BUILD $PKG/RPMS/*
+mv $PKG/RPMS/*.rpm $PKG
+cd $PKG
+rm -rf $PKG/RPMS
+
+# Build menus for Slackware
+if [ $MENU = yes ]; then
+
+  # Build Slackware menus for KDE & Gnome/XFCE/Free Desktop compliant
+  preparePackage
+  extractPackage suse-menus noarch
+  
+  mkdir $PKG
+  mv $PKG/package/opt/gnome/share/* $PKG/package/usr/share
+  rm -rf $PKG/package/opt/gnome
+  mv $PKG/package/opt/kde3 $PKG/package/opt/kde
+
+  # Backwards compatibility with older beta candidates
+  rm -rf $PKG/package/opt/kde/share/applnk
+
+  mkdir -p $PKG/package/usr/share/applications
+  cd $PKG/package/usr/share/applications
+
+  # Remove all the incorrect symlinks
+  rm $PKG/package/usr/share/applications/*
+  ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/printeradmin.desktop openoffice.org-${S_VERSION}-printeradmin.desktop
+  ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/base.desktop openoffice.org-${S_VERSION}-base.desktop
+  ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/calc.desktop openoffice.org-${S_VERSION}-calc.desktop
+  ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/draw.desktop openoffice.org-${S_VERSION}-draw.desktop
+  ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/math.desktop openoffice.org-${S_VERSION}-math.desktop
+  ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/impress.desktop openoffice.org-${S_VERSION}-impress.desktop
+  ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/writer.desktop openoffice.org-${S_VERSION}-writer.desktop
+  # ln -sf /opt/openoffice.org${S_VERSION}/share/xdg/printer.desktop openoffice.org-${S_VERSION}-printer.desktop
+
+  # Replace the binaries in /usr/bin - correct link to file
+  cd $PKG/package
+  rm $PKG/package/usr/bin/*
+
+  cat << _EOF_ > $PKG/package/usr/bin/openoffice.org-${S_VERSION}
+#!/bin/sh
+exec /opt/openoffice.org${S_VERSION}/program/soffice "\$@"
+_EOF_
+
+  cat << _EOF_ > $PKG/package/usr/bin/openoffice.org-${S_VERSION}-printeradmin
+#!/bin/sh
+exec /opt/openoffice.org${S_VERSION}/program/spadmin
+_EOF_
+
+  mkdir -p $PKG/package/install
+  cat << _EOF_ > $PKG/package/install/doinst.sh
+( if which update-mime-database; then update-mime-database /usr/share/mime; fi ) &> /dev/null
+( if which update-desktop-database; then update-desktop-database; fi ) &> /dev/null
+_EOF_
+
+  chmod a+x $PKG/package/install/doinst.sh
+  chmod -R 755 $PKG/package/usr
+  chown -R root.bin $PKG/package/usr/bin
+
+  if [ $FOLDALL = no ]; then
+    buildPackage slackware-menus noarch slack-desc/slack-desc.slackware-menus
+  fi
+
+fi
+
+# Delete the SuSE menu package
+rm $PKG/openoffice.org-suse*
+
+# Add package descriptions
+
+if [ $DESCRIPTION = yes ]; then
+
+  echo "Adding package descriptions (hold on a little longer...)"
+
+# If spelling is to be added to a core package, extract it so that we can do it transparently with the
+# core packages
+  if [ $FOLDSPELL = yes ]; then
+    preparePackage
+    extractPackage spellcheck $ARCH
+    cd $PKG
+  fi
+
+# Fold all core packages into one
+  if [ $FOLDCORE = yes ]; then
+    preparePackage
+
+    for CORE in `seq -w 1 10`
+    do
+      extractPackage core$CORE $ARCH
+
+      if [ -e $PKG/openoffice.org-core${CORE}u-$VERSION-$ARCH-$BUILD.rpm ]; then
+        extractPackage core${CORE}u $ARCH
+      fi
+
+    done
+
+    buildPackage core $ARCH slack-desc/slack-desc.core
+
+# Fold all packages into one
+  elif [ $FOLDALL = yes ]; then
+
+    echo "Building super package (almost done!)"
+
+    preparePackage
+
+    for file in $PKG/openoffice.org*-$VERSION-*.rpm
+    do
+        package=`echo ${file} | sed s%${PKG}/openoffice.org-%% | sed s/-${VERSION}-${ARCH}-${BUILD}.rpm//`
+
+        extractPackage $package $ARCH
+    done
+
+#    buildPackage 
+    mkdir $PKG/package/install
+    rm $PKG/package/install/slack-desc
+    cat $CWD/slack-desc/slack-desc.ooo > $PKG/package/install/slack-desc
+    makepkg -l y -c n $PKG/openoffice.org-$VERSION-$ARCH-$BUILD.tgz
+    cd $PKG
+    rm -rf $PKG/package
+
+  else
+
+# Core Packages
+    for CORE in `seq -w 1 10`
+    do
+      preparePackage
+
+      if [ -e $PKG/openoffice.org-core${CORE}u-$VERSION-$ARCH-$BUILD.rpm ]; then
+	extractPackage core${CORE}u $ARCH
+      fi
+
+      extractPackage core$CORE $ARCH
+      buildPackage core$CORE $ARCH slack-desc/slack-desc.core
+
+    done
+
+    PKGNAME[0]=writer
+    PKGNAME[1]=calc
+    PKGNAME[2]=math
+    PKGNAME[3]=base
+    PKGNAME[4]=impress
+    PKGNAME[5]=draw
+    PKGNAME[6]=testtool
+    PKGNAME[7]=gnome-integration
+    PKGNAME[8]=graphicfilter
+    PKGNAME[9]=javafilter
+    PKGNAME[10]=spellcheck
+    PKGNAME[11]=pyuno
+    PKGNAME[12]=xsltfilter
+    PKGNAME[13]=emailmerge
+    # core?
+
+    for i in `seq 0 13`
+    do
+
+      if [ -e $PKG/openoffice.org-${PKGNAME[i]}-$VERSION-$ARCH-$BUILD.rpm ]; then
+        preparePackage
+        extractPackage ${PKGNAME[i]} $ARCH
+        buildPackage ${PKGNAME[i]} $ARCH slack-desc/slack-desc.${PKGNAME[i]}
+      fi
+
+    done
+  fi 
+
+
+
+fi
+
+# Move all the tgz files to $DESTINATION
+mv $PKG/*.tgz $DESTINATION
+
+# Clean up the extra stuff:
+if [ "$1" = "--cleanup" ]; then
+  rm -rf $PKG
+fi

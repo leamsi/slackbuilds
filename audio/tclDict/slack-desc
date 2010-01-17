@@ -1,0 +1,12 @@
+
+tclDict:
+tclDict:  |  tclDict 
+tclDict:  |  8.5.2   
+tclDict:  |  pkg'd by paul wisehart
+tclDict:  |  wise@lupulin.net
+tclDict:
+tclDict:  This adds the "dict" command from tcl-8.5 to 
+tclDict:  tcl-8.4 (which is the current stable version)
+tclDict:
+tclDict:
+

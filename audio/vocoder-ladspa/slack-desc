@@ -1,0 +1,12 @@
+
+vocoder-ladspa:
+vocoder-ladspa:  |  vocoder-ladspa 
+vocoder-ladspa:  |  0.3            
+vocoder-ladspa:  |  pkg'd by paul wisehart
+vocoder-ladspa:  |  wise@lupulin.net
+vocoder-ladspa:
+vocoder-ladspa:
+vocoder-ladspa: with patch for jack-rack:
+vocoder-ladspa: http://music.columbia.edu/pipermail/linux-audio-user/attachments/20060724/f79ad59a/stereo-0001.bin
+vocoder-ladspa:
+vocoder-ladspa:

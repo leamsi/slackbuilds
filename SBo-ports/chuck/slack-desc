@@ -1,0 +1,12 @@
+     |-------handy-ruler------------------------------------------------------|
+chuck: ChucK Audio Programming Language
+chuck:
+chuck: ChucK is a new (and developing) audio programming language for real-time
+chuck: synthesis, composition, performance, and now, analysis - fully supported
+chuck: on  MacOS  X, Windows,  and  Linux.  ChucK  presents a  new  time-based,
+chuck: concurrent programming  model that's  highly precise and  expressive (we
+chuck: call this  strongly-timed), as  well as dynamic  control rates,  and the
+chuck: ability to add  and modify code on-the-fly. In  addition, ChucK supports
+chuck: MIDI, OSC,  HID device, and  multi-channel audio.  It's fun and  easy to
+chuck: learn,  and offers  composers,  researchers, and  performers a  powerful
+chuck: programming tool for building and experimenting with audio.

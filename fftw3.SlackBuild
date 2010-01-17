@@ -1,0 +1,406 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.07 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for fftw (tested with version(s) 3.1.1,3.1.2)
+# fftw can be obtained at http://www.fftw.org/download.html
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+# I decided to change to fftw3 since slackware includes fftw version 2.1
+# (/extra/ham). Hehe, I didn't know that until I saw it in slackpkg.
+APPNAME=fftw3
+#This is the version number the package will receive. It is usually the application version.
+VERSION=3.2.1
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+# In the case of x86, an 486 binary can be run in any 486 and more recent
+# processors.
+#
+# *SPECIAL NOTE FOR FFTW*: If this variable is NOT left empty, the configuration
+# option --enable-portable-binary will be used, which means that you'll not
+# have the top of the notch of the available performance. Clear this variable
+# if you are going to build a no-to-be-distributed package.
+#ARCH=${ARCH:-i686}
+
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=${CPU:-i686}
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=/usr
+# This is the temp directory where the package will be build.
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=${GZIPMAN:-1}
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=${GZIPINFO:-1}
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=${STRIPEXES:-1}
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+# The name of the source-file
+SOURCE_NAME=fftw
+# The version number of the source file.
+SOURCE_VERSION=${VERSION}
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT=.tar.gz
+# The name of the source file.
+SOURCE_FILE=${SOURCE_NAME}-${SOURCE_VERSION}${SOURCE_EXT}
+
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES="CONVENTIONS AUTHORS COPYING LICENSE CREDITS NEWS TODO README ChangeLog FAQ LICENSE doc/html doc/FAQ/fftw-faq.ascii"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=""
+PKGCXXFLAGS=$PKGCFLAGS
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+# According to the documentation, FFTW should work with processors which don't
+# have SIMD extensions (SSE,SSE2,3DNOW!) even when enabled.
+# Also, SSE and 3DNOW! are only enabled when building the single precision
+# version, and SSE2 is enabled only when building the double precision version.
+# This means that the options which enable these are only set when building the
+# respective precision build (look below).
+PKGCONFIG="--enable-shared --enable-static --enable-threads"
+
+
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+# Fake root directory.
+ROOTDIR=$PKG/rootdir
+
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+    echo "$0: The script isn't being run as root."
+    echo "$0:  No final pkg is going to be made and permissions will not be set"
+    sleep 1
+fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+if [ ! -z $ARCH ]; then
+    # Since this configure script seems very sensible to having a CFLAGS variable,
+    # we will not pass it when there's nothing to pass
+    CFLAGS="-march=$ARCH -mtune=$CPU -O3 -fno-trapping-math -fno-math-errno -ffinite-math-only -fstrict-aliasing -fstrength-reduce -malign-double -mpreferred-stack-boundary=4 -fomit-frame-pointer"
+    # If enable portable binary is not defined, the resulting binary will crash
+    # on any other CPU other than $CPU
+    SLKCONFIG="--enable-portable-binary --with-gcc-arch=$CPU "
+
+    CXXFLAGS=$CFLAGS
+
+    export CFLAGS CXXFLAGS
+fi
+SLKCONFIG=${SLKCONFIG}"--prefix=${INSTALLPREFIX} "
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+fi
+
+(cd $SOURCE_DIR
+wget -nc -nv http://www.fftw.org/$SOURCE_FILE
+)
+
+#Get in the build directory and untar the source file
+cd $PKG
+# Sometimes, you may need to change this command.
+tar zxf $SOURCE_DIR/$SOURCE_FILE
+
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Error obtaining source-code to build."
+    echo "$0:        Please make sure that:"
+    echo "$0:        The variable SOURCE_DIR points to wherever $SOURCE_FILE is. Or"
+    echo "$0:        The file $SOURCE_DIR/$SOURCE_FILE exists and can be read."
+    echo "$0:        That you can write to $PKG."
+    echo "$0:        That the file $SOURCE_DIR/$SOURCE_FILE is not corrupted"
+    exit 1
+fi
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Cannot access directory $PKG/$EXTRACTED_DIR."
+    echo "$0:        Make sure that the EXTRACTED_DIR variable matches the untarred directory."
+    exit 1
+fi
+
+# We will make 3 Builds: One for double precision, another one for single and
+# other for long double.
+#
+# We start with single precision. If you are building for PPC architecture, you
+# may want to --enable-altivec. If you are using --enable-shared, then you
+# CAN'T use --enable-k7.
+set -x
+./configure $SLKCONFIG $PKGCONFIG --enable-single --enable-sse | tee $PKG/configure_single_log
+set +x
+[ ${PIPESTATUS[0]} = 0 ] || exit
+make -j2 | tee $PKG/make_single_log
+[ ${PIPESTATUS[0]} = 0 ] || exit
+mkdir $PKG/rootdir
+make install DESTDIR=$PKG/rootdir | tee $PKG/install_single_log
+[ ${PIPESTATUS[0]} = 0 ] || exit
+
+# This is the long double precision.
+#
+make distclean
+set -x
+./configure $SLKCONFIG $PKGCONFIG --enable-long-double | tee $PKG/configure_long_double_log
+set +x
+[ ${PIPESTATUS[0]} = 0 ] || exit
+make -j2 | tee $PKG/make_long_double_log
+[ ${PIPESTATUS[0]} = 0 ] || exit
+make install DESTDIR=$PKG/rootdir | tee $PKG/install_long_double_log
+[ ${PIPESTATUS[0]} = 0 ] || exit
+
+# This is the default, double precision.
+#
+make distclean
+#Configure this thing.
+# You may need to change the target string (the one which reads
+# i486-slackware-linux-gnu) if it doesn't work with your configure.
+# 
+# GNU GCC 3.4.6 has problems when running make install with this configuration,
+# so I disabled sse2, you may want to enable it when using a different
+# configuration (like running a build without ARCH variable) or using a
+# different compiler.
+#                                                                             --enable-sse2
+set -x
+./configure $SLKCONFIG $PKGCONFIG --enable-sse2  | tee $PKG/configure_double_log
+set +x
+[ ${PIPESTATUS[0]} = 0 ] || exit
+#Make this thing.
+make -j2 | tee $PKG/make_double_log
+[ ${PIPESTATUS[0]} = 0 ] || exit
+#Install this ting in the fake root directory
+# Some packages use ROOT instead of DESTDIR, and a few others use something
+# else. Make sure to check that before running up to this point.
+make install DESTDIR=$PKG/rootdir | tee $PKG/install_double_log
+[ ${PIPESTATUS[0]} = 0 ] || exit
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+# Make documentation
+# It will get automagically.
+(cd doc
+make html | tee $PKG/make_html_log
+cd FAQ
+make faq | tee $PKG/make_faq_log
+)
+
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+  mkdir -p $PKG/rootdir/usr/doc
+  (cd $PKG/rootdir/usr/doc
+   ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+  )
+fi
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+    if [ -d $ROOTDIR$INSTALLPREFIX/share/man ]; then
+        mkdir -p $ROOTDIR$INSTALLPREFIX/man
+        mv $ROOTDIR$INSTALLPREFIX/share/man/* $ROOTDIR$INSTALLPREFIX/man
+        rmdir $ROOTDIR$INSTALLPREFIX/share/man
+    fi
+   if [ -d $ROOTDIR$INSTALLPREFIX/man ]; then
+      gzip -9r $ROOTDIR$INSTALLPREFIX/man/
+      if [ ! $? = 0 ]; then
+          echo "$0: Error: Cannot gzip man pages under $ROOTDIR$INSTALLPREFIX/man. Continuing"
+      fi
+      find $ROOTDIR$INSTALLPREFIX/man -type l | while read link ; do
+          target=$(readlink $link)
+          rm -f $link
+          ln -s ${target/"$ROOTDIR"/}.gz $link
+      done
+   fi
+fi
+
+
+if [ -d $ROOTDIR$INSTALLPREFIX/share/info ]; then
+    mkdir -p $ROOTDIR$INSTALLPREFIX/info
+    mv $ROOTDIR$INSTALLPREFIX/share/info/* $ROOTDIR$INSTALLPREFIX/info
+    rmdir $ROOTDIR$INSTALLPREFIX/share/info
+fi
+if [ -d $ROOTDIR$INSTALLPREFIX/info ]; then
+    rm -f $ROOTDIR$INSTALLPREFIX/info/dir
+    if [ ! "$GZIPINFO" = "0" ]; then
+        gzip -9 $ROOTDIR$INSTALLPREFIX/info/*
+        if [ ! $? = 0 ]; then
+           echo "$0: Error: Cannot gzip info pages under $ROOTDIR$INSTALLPREFIX/info. Continuing"
+        fi
+    fi
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) (Collection of fast routines for FFT)
+$APPNAME: 
+$APPNAME:  FFTW is  a free  collection  of fast  C  routines  for computing the 
+$APPNAME: Discrete Fourier Transform  in one or  more  dimensions.  It includes
+$APPNAME: complex, real,  symmetric, and  parallel  transforms,  and can handle
+$APPNAME: arbitrary array sizes efficiently. FFTW is typically faster than other
+$APPNAME: publically-available FFT implementations, and is even competitive with
+$APPNAME: vendor-tuned libraries.
+$APPNAME: To  achieve this  performance,  FFTW uses  novel  code-generation and
+$APPNAME: runtime self-optimization techniques.
+$APPNAME: This package  includes the  single,  double and long double precision
+$APPNAME: variants.
+_EOS_
+if [ ! -z "$ARCH" ]; then
+    cat >> install/slack-desc <<_EOS_
+$APPNAME: This is a generic, NOT hyper-optimized package for >= ${ARCH}
+_EOS_
+else
+    cat >> install/slack-desc <<_EOS_
+$APPNAME: This package will only run correctly for the processor it was built
+$APPNAME: on, but it will run slightly faster than a generic package.
+_EOS_
+fi
+
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+_EOS_
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/$APPNAME-$VERSION-$BUILD
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$BUILD/SlackBuild
+
+
+if [ $UID = 0 ]; then
+    #Almost-safe default:
+    chown -R root:root *
+fi
+
+# Fix some non slackware-standard permissions.
+# Note that neither 660 nor 770 will be fixed.
+find . \(   -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 \) -type f -exec chmod 644 '{}' '+' , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 \) -type f  -exec chmod 755 '{}' '+' , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 \)  -type f -exec chmod 755 '{}' '+'
+
+# A rather interesting warning.
+checkstack ()
+{
+    for E in $@ ; do
+        if readelf -l $E | grep GNU_STACK | grep -q " [R ][W ]X " ; then
+            echo "$0: Warning: Executable file $E has the stack executable."
+            echo "$0:          Sometimes this is desirable, but it can also be a sign of a"
+            echo "$0:          possible stack-overflow based attack."
+            sleep 1
+        fi
+    done
+}
+find . -type f -print | xargs file | grep ELF | cut -f 1 -d : | while read file ; do
+    checkstack "$file"
+done
+
+# Safety net
+chmod 755 .
+[ -e root/ ] && chmod 700 root/
+[ -e bin/ ] && chmod 755 bin/
+[ -e sbin/ ] && chmod 755 sbin/
+[ -e usr/ ] && chmod 755 usr/
+[ -e home/ ] && chmod 755 home/ && chmod 700 home/*
+[ -e etc/ ] && chmod 755 etc/
+[ -e lib/ ] && chmod 755 lib/
+[ -e tmp/ ] && chmod 1777 tmp/
+
+#Fix some other permision problems:
+#Maybe add/remove suid bits which are necesary, or set the owner/group of certain folders
+
+#End fix of other permission problems.
+
+ 
+
+if [ $UID = 0 ]; then
+    #Here goes the package :)
+    [ -z "$ARCH" ] && ARCH=native
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+    if [ ! $? = 0 ]; then
+        echo "$0: Fatal: Error creating the final package. Quitting"
+        exit 1
+    fi
+
+    #cleanup and we're done.
+    cd $PKG
+    rm -rf rootdir
+    rm -rf $EXTRACTED_DIR
+else
+    echo "$0: Info: Not root. Omitting creation of package $APPNAME-$VERSION-$ARCH-$BUILD.tgz"
+    echo "$0: Info: Not root. Omitting cleaning up of files."
+fi
+
+exit 0

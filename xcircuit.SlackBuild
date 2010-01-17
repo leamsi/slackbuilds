@@ -1,0 +1,233 @@
+#! /bin/bash
+
+#BUILD SCRIPT FOR XCircuit (TESTED WITH VERSION(S) 3.4.11)
+# XCircuit can be obtained at http://opencircuitdesign.com/xcircuit/
+CWD=$(pwd)
+APPNAME=xcircuit
+VERSION="3.4.11"
+BIGVERSION="3.4"
+ARCH=i486
+CPU=i686
+BUILD=1icv
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+#This means that "make install" auto copies the doc files (README, INSTALL, etc) in some directory,
+# instead of copying or moving those files, this script will create a link in /usr/doc/appname-version
+#which points to the right place.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+#Note that if AUTODOCDIR is set,  these files are ignored
+DOCFILES="README README.ISOLatin2 README.Tcl README.notes TODO VERSION CHANGES COPYRIGHT examples"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+#PKGCONFIG="--enable-something=yes --enable-something-else=no"
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O2 -march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=/usr"
+
+#Where the source file is located
+SOURCE_DIR=$(pwd)
+SOURCE_EXT=.tgz
+SOURCE_FILE=$APPNAME-$VERSION$SOURCE_EXT
+
+#The name of the untared directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+fi
+
+#Get in the build directory and untar the source file
+cd $PKG
+tar zxf $SOURCE_DIR/$SOURCE_FILE
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+   echo "$0: RUN ME AS ROOT ONLY!"
+   exit
+fi
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+
+#Configure this thing.
+./configure $SLKCONFIG $PKGCONFIG CFLAGS="$SLKCFLAGS $PKGCFLAGS" CXXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS" i486-slackware-linux
+#Make this thing.
+make
+#Make the fake root directory (used to store files)
+mkdir $PKG/rootdir
+#Install this ting in the fake root directory
+make install DESTDIR=$PKG/rootdir
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+
+#I dont know why, but it tries to install the man page in lib/xcircuit/man/ instead of the given
+# directory with ./configure --mandir=/usr/man
+#So i'll move it manually here...
+
+#test in case that future versions fix this...
+if [ -e $PKG/rootdir/usr/lib/xcircuit-$BIGVERSION/man/xcircuit.1 ]; then
+    mkdir -p $PKG/rootdir/usr/man/man1
+    mv $PKG/rootdir/usr/lib/xcircuit-$BIGVERSION/man/xcircuit.1 $PKG/rootdir/usr/man/man1/xcircuit.1
+    (cd $PKG/rootdir/usr/lib/xcircuit-$BIGVERSION/man
+     ln -s ../../../man/man1/xcircuit.1.gz)
+    #I don't know why they +x'ed it, but it should not be like that.
+     chmod -x $PKG/rootdir/usr/man/man1/xcircuit.1
+    #It will get gziped latter anyway...
+fi
+
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+  mkdir -p $PKG/rootdir/usr/doc
+  (cd $PKG/rootdir/usr/doc
+   ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+  )
+fi
+
+#gzip man and info pages
+if [ -d $PKG/rootdir/usr/man/* ]; then
+   gzip -9q $PKG/rootdir/usr/man/*/*
+fi
+if [ -d $PKG/rootdir/usr/info ]; then
+   rm -f $PKG/rootdir/usr/info/dir
+   gzip -9q $PKG/rootdir/usr/info/*
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+(
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+  find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+)
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) is an aplication for blocks and circuit drawing.
+$APPNAME: 
+$APPNAME: XCircuit can be used to make designs of circuits and is thougth to be
+$APPNAME: used mostly for writting books.
+$APPNAME: It exports directly to PostScript, and its library files are PS files
+$APPNAME: too.
+$APPNAME: Actually it can be used to draw almost anything and is superb for
+$APPNAME: herarchical draws, like for example, music partitures.
+$APPNAME:
+$APPNAME: You can download more libraries from http://opencircuit.com/xcircuit/
+$APPNAME: 
+_EOS_
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+tcl >= 8.4.11-i486-1
+tk >= 8.4.11-i486-1
+_EOS_
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+#Almost-safe default:
+chown -R root:root *
+if [ -d usr/bin ]; then
+   chown -R root:bin usr/bin
+   chmod -R 755 usr/bin
+fi
+if [ -d bin ]; then
+   chown -R root:bin bin
+   chmod -R 755 bin
+fi
+if [ -d usr/local/bin ]; then
+   chown -R root:bin usr/local/bin
+   chmod -R 755 usr/local/bin
+fi
+if [ -d usr/X11R6/bin ]; then
+   chown -R root:bin usr/X11R6/bin
+   chmod -R 755 usr/X11R6/bin
+fi
+if [ -d usr/sbin ]; then
+   chown -R root:bin usr/sbin
+   chmod -R 755 usr/sbin
+fi
+if [ -d sbin ]; then
+   chown -R root:bin sbin
+   chmod -R 755 sbin
+fi
+if [ -d usr/local/sbin ]; then
+   chown -R root:bin usr/local/sbin
+   chmod -R 755 usr/local/sbin
+fi
+
+find . -perm 664 -exec chmod 644 {} \;
+find . -perm 600 -exec chmod 644 {} \;
+find . -perm 444 -exec chmod 644 {} \;
+find . -perm 400 -exec chmod 644 {} \;
+find . -perm 440 -exec chmod 644 {} \;
+find . -perm 777 -exec chmod 755 {} \;
+find . -perm 775 -exec chmod 755 {} \;
+find . -perm 511 -exec chmod 755 {} \;
+find . -perm 711 -exec chmod 755 {} \;
+find . -perm 555 -exec chmod 755 {} \;
+find . -perm 666 -exec chmod 644 {} \;
+find . -perm 2775 -exec chmod 755 {} \;
+find . -perm 2755 -exec chmod 755 {} \;
+find . -perm 2711 -exec chmod 755 {} \;
+find . -perm 2751 -exec chmod 755 {} \;
+find . -perm 2555 -exec chmod 755 {} \;
+find . -perm 2511 -exec chmod 755 {} \;
+#Fix some other permision problems:
+#Maybe add the suid bits which are necesary.
+
+#End fix of other permission problems.
+
+#Here goes the package :)
+/sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+
+#cleanup and we're done.
+cd ..
+rm -rf rootdir
+rm -rf $EXTRACTED_DIR

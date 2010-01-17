@@ -1,0 +1,13 @@
+Alock locks the X server until the user enters a password via the keyboard. If the authentification was successful the X server is unlocked and the user can continue to work. 
+
+alock does not provide any fancy animations like xlock or xscreensaver and never will. Its just for locking the current X session.
+
+Note: If you want to use your login password you'll have to give /usr/bin/alock the suid bit. Be sure to read the man page! You can set it up to use some other password too.
+
+It has an optional (and recomended) dependency on imlib2, which is available at slackbuilds.org. 
+
+Enabling IMLIB2 gives you some goodies:
+ * Supports more images formats for the cursor, including common ones as PNG.
+ * Supports setting an image as screen blank background.
+
+If you do NOT want to use IMLIB2 set the environment variable WITH_IMLIB2=NO before calling the script.

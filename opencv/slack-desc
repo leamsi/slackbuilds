@@ -1,0 +1,8 @@
+opencv: Intel Open Computer Vision library.
+opencv:
+opencv: The OpenCV library implements several high and low level
+opencv: functions useful for computer vision and machine learning.
+opencv: 
+opencv: This package includes the Python bindings, allowing you
+opencv: to make quick demos and prototypes with OpenCV.
+opencv: 

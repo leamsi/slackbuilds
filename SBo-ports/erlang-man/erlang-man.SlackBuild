@@ -1,0 +1,122 @@
+#!/bin/sh
+#
+# Isn't the ${X:-x} syntaxis a BASHism, anyway?
+
+#Build  Script  for  erlang man  pages  (tested  with
+#version(s): R11B-4)
+# Erlang can be obtained at http://www.erlang.org
+#
+
+# Written by Ismael Cortes (leamsi.setroc@gmail.com)
+
+# This  is a  rewrite  of a  SlackBuild I  originally
+# wrote based on a template generic.SlackBuild
+#
+# I, as writer  and author, give this  script and its
+# intelectual property to the public domain.
+
+# For debugging propouses.
+set -x
+
+PRGNAM=erlang-man
+VERSION=R11B_4
+ARCH=${ARCH:-i486}
+BUILD=${BUILD:-1}
+TAG=${TAG:-_SBo}
+CWD=$(pwd)
+TMP=${TMP:-/tmp/SBo}
+PKG=$TMP/package-$PRGNAM
+OUTPUT=${OUTPUT:-/tmp}
+
+# They    aren't   necesary    at   all,    but   the
+# slackbuilds.org  guidelines  says  "Make  sure  the
+# following lines are present:"
+if [ "$ARCH" = "i486" ] ; then
+    SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ] ; then
+    SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+fi
+
+# Sanity check. If you ever get this warning, then
+# you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ] ; then
+    echo "$0: Fatal: PKG directory is root! ($PKG)"
+    exit 1
+fi
+if [ "$TMP" = "/" -o "$TMP" = "" ] ; then
+    echo "$0: Fatal TMP directory is root! ($TMP)"
+    exit 1
+fi
+
+# Where to install stuff. Some people prefer to use 
+# /usr/local for non-standard things.
+# NOTE: Make sure to use the same prefix you used for
+# erlang
+INSTALLPREFIX=${INSTALLPREFIX:-/usr}
+
+# Where the source files are located (default is
+# current dir)
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+
+# The version of the files. R11B-3.
+SRC_VERSION=$(echo $VERSION | sed -e's:_:-:')
+
+# Man pages.
+MAN_FILE=otp_doc_man_${SRC_VERSION}.tar.gz
+
+mkdir -p $TMP $OUTPUT || exit 1
+
+
+if [  -d $PKG ] ; then
+   # Remove evidence of last build
+   rm -rf $PKG || exit 1
+fi
+
+mkdir -p ${PKG}${INSTALLPREFIX}/lib/erlang || exit 1
+
+
+tar -C ${PKG}${INSTALLPREFIX}/lib/erlang -zxvf $SOURCE_DIR/$MAN_FILE || exit 2
+# Gzip man pages.
+#
+# Yes,  Erlang (at  least R11B4)  seems able  to read
+# gzipped man pages.
+gzip -9 ${PKG}${INSTALLPREFIX}/lib/erlang/man/*/* || exit 2
+# Just add the section 1 man pages to /usr/man mostly
+# to avoid  both, clutter and overwrite  of other man
+# pages.
+mkdir -p $PKG/usr/man/man1 || exit 2
+cd $PKG/usr/man/man1 || exit 2
+for file in ${PKG}${INSTALLPREFIX}/lib/erlang/man/man1/*.1* ; do
+    ln -sf ${file/"$ROOTDIR"/} $(basename $file) || exit 2
+done
+
+# This  man page  only applies  to Windows.  We don't
+# need it.
+rm -f ${PKG}${INSTALLPREFIX}/lib/erlang/man/{man,cat}1/erlsrv.1*
+# Remove symlink also.
+rm -f ${PKG}/usr/man/{man,cat}1/erlsrv.1*
+
+mkdir -p $PKG/usr/doc/erlang-$VERSION || exit 3
+
+cat $CWD/erlang-man.SlackBuild > $PKG/usr/doc/erlang-$VERSION/erlang-man.SlackBuild || exit 2
+
+mkdir $PKG/install || exit 3
+
+# Install the slack-desc
+cp $CWD/slack-desc $PKG/install/slack-desc || exit 3
+
+# Just to be sure...
+chown -R root:root $PKG || exit 3
+
+# Fix permissions.
+find $PKG \( -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 \)  -exec chmod 644 '{}' '+' , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 \) -exec chmod 755 '{}' '+' , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 \) -exec chmod 755 '{}' '+'
+
+# Here goes the package :)
+cd $PKG || exit 3
+/sbin/makepkg -p -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-${BUILD}${TAG}.tgz \
+| tee $CWD/makepkg.log \
+|| exit 3
+
+exit 0

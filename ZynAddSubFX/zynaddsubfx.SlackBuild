@@ -1,0 +1,405 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.07 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for zynaddsubfx (tested with version(s) 2.2.1)
+# zynaddsubfx can be obtained at http://zynaddsubfx.sourceforge.net/#t07
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=zynaddsubfx
+#This is the version number the package will receive. It is usually the application version.
+# If you add the suffix _lash it will try to find the lash-jackmidi
+# patch (found in sourceforge.net project page, in the patches section)
+# and apply it.
+VERSION=2.2.1_lash
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+# In the case of x86, an 486 binary can be run in any 486 and more recent
+# processors.
+ARCH=${ARCH:-i486}
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=${CPU:-i686}
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=${INSTALLPREFIX:-/usr}
+# This is the temp directory where the package will be build.
+TMP=${TMP:-/tmp}
+
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=${GZIPMAN:-1}
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=${GZIPINFO:-1}
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=${STRIPEXES:-1}
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+# The name of the source-file
+SOURCE_NAME=ZynAddSubFX
+# The version number of the source file.
+SOURCE_VERSION=2.2.1
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT=.tar.bz2
+# The name of the source file.
+SOURCE_FILE=${SOURCE_NAME}-${SOURCE_VERSION}${SOURCE_EXT}
+
+# The name of the icon file. For some reason, ImageMagick doesn't want to
+# transform the .ico included with the source file, so I used KView and saved
+# it to a png. I don't know if it's possible to streamline the process with
+# KView, but I didn't want to depend on KDE for the build process, so I didn't
+# even tried.
+# It should be in $SOURCE_DIR
+ICON_NAME="zynaddsubfx_icon.png"
+
+# The name of the lash-jackmidi patch
+PATCH_NAME="zyn-2.2.1-lash-jackmidi-060605.diff"
+
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES="AUTHORS COPYING LICENSE CREDITS NEWS TODO README.txt ChangeLog FAQ.txt LICENSE bugs.txt HISTORY.txt examples/"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+PKGCONFIG=""
+
+
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+    echo "$0: The script isn't being run as root."
+    echo "$0:  No final pkg is going to be made and permissions will not be set"
+    sleep 1
+fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot access or create temporary directory ($TMP). Quitting."
+       exit 1
+   fi
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=${INSTALLPREFIX}"
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: Fatal: PKG directory is root! ($PKG)"
+  exit 1
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot create the build directory ($PKG). Quitting."
+       exit 1
+   fi
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot erease old contents of $PKG."
+       echo "Will continue, but build may fail."
+   fi
+fi
+
+#Get in the build directory and untar the source file
+cd $PKG
+# Sometimes, you may need to change this command.
+tar jxf $SOURCE_DIR/$SOURCE_FILE
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Error obtaining source-code to build."
+    echo "           Please make sure that:"
+    echo "           The file $SOURCE_DIR/$SOURCE_FILE exists and can be read."
+    echo "           That you can write to $PKG."
+    echo "           That the file $SOURCE_DIR/$SOURCE_FILE is not corrupted"
+    exit 1
+fi
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Cannot access directory $PKG/$EXTRACTED_DIR."
+    echo "           Make sure that the EXTRACTED_DIR variable matches the untarred directory"
+    exit 1
+fi
+
+if echo $VERSION | grep -q "_lash$" ; then
+    echo "Patching for LASH+JACK MIDI..."
+    patch -p1 < $SOURCE_DIR/$PATCH_NAME
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Cannot apply patch!"
+        echo "           A normal version will be build instead."
+        VERSION=$(echo $VERSION | sed -e's/\(.*\)_lash$/\1')
+    fi
+fi
+
+#Make the fake root directory (used to store files)
+mkdir $PKG/rootdir
+
+#Make this thing.
+(cd src
+make CXX="g++ $SLKCXXFLAGS $PKGCXXFLAGS" OS_PORT=LINUX FFTW_VERSION=3 ASM_F2Y=YES DISABLE_GUI=NO LINUX_MIDIIN=ALSA LINUX_AUDIOOUT=OSS_AND_JACK LINUX_DSSI=NO | tee $PKG/make_log
+# install
+mkdir -p $PKG/rootdir/$INSTALLPREFIX/bin
+cp zynaddsubfx $PKG/rootdir/$INSTALLPREFIX/bin
+)
+
+# Build the external programs.
+(cd ExternalPrograms/Controller
+./clean.sh
+fluid -c ControllerUI.fl
+gcc `fltk-config --cflags` -O2 $SLKCXXFLAGS $PKGCXXFLAGS -c ControllerUI.cxx -o ControllerUI.o
+gcc `fltk-config --cflags` -O2 $SLKCXXFLAGS $PKGCXXFLAGS -c Controller.C -o Controller.o
+gcc `fltk-config --cflags` -O2 $SLKCXXFLAGS $PKGCXXFLAGS -c main.C -o main.o
+gcc -o controller *.o `fltk-config --ldflags` -lasound -lpthread -lm
+cp controller $PKG/rootdir/$INSTALLPREFIX/bin
+)
+
+(cd ExternalPrograms/Spliter
+./clean.sh
+fluid -c SpliterUI.fl
+gcc `fltk-config --cflags` -O2 $SLKCXXFLAGS $PKGCXXFLAGS -c SpliterUI.cxx -o SpliterUI.o
+gcc `fltk-config --cflags` -O2 $SLKCXXFLAGS $PKGCXXFLAGS -c Spliter.C -o Spliter.o
+gcc `fltk-config --cflags` -O2 $SLKCXXFLAGS $PKGCXXFLAGS -c main.C -o main.o
+gcc -o spliter *.o `fltk-config --ldflags` -lasound
+cp spliter $PKG/rootdir/$INSTALLPREFIX/bin
+mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/spliter
+cp readme.txt $PKG/rootdir/usr/doc/$APPNAME-$VERSION/spliter/
+)
+#Install this thing in the fake root directory
+mkdir -p $PKG/rootdir/$INSTALLPREFIX/share/zynaddsubfx
+cp -a banks presets $PKG/rootdir/$INSTALLPREFIX/share/zynaddsubfx/
+
+[ -e $SOURCE_DIR/$ICON_NAME ] &&  mkdir -p $PKG/rootdir/usr/share/pixmaps && cp $SOURCE_DIR/$ICON_NAME $PKG/rootdir/usr/share/pixmaps
+
+mkdir -p $PKG/rootdir/usr/share/applications
+cat > $PKG/rootdir/usr/share/applications/zynaddsubfx.desktop <<_EOF_
+[Desktop Entry]
+Encoding=UTF-8
+Exec=$INSTALLPREFIX/bin/zynaddsubfx
+Icon=/usr/share/pixmaps/$ICON_NAME
+Name=ZynAddSubFX
+Name[sv]=Zynaddsubfx
+Name[ta]=சயண்டன்சப்பெஸ்
+GenericName=Soft Synth
+GenericName[bg]=Софтуерен синтезатор
+GenericName[br]=Kenaozer a-veziant
+GenericName[bs]=Softverski sintisajzer
+GenericName[cs]=Softwarová syntéza
+GenericName[cy]=Synth Meddal
+GenericName[da]=Blød synth
+GenericName[de]=Software-Synthesizer
+GenericName[es]=Sintetizador por software
+GenericName[et]=Tarkvaraline süntesaator
+GenericName[fi]=Pehmeä synteesi
+GenericName[fr]=Synthétiseur logiciel
+GenericName[he]=סינטיסייזר רך
+GenericName[hu]=Szoftveres szintetizátor
+GenericName[is]=Mjúkur hljóðgervill
+GenericName[it]=Sintetizzatore Software
+GenericName[ja]=ソフトシンセ
+GenericName[km]=Synth ស្រទន់
+GenericName[mk]=Софтверски синтисајзер
+GenericName[nb]=Programvaresynt
+GenericName[nl]=Software Synthesizer
+GenericName[nn]=Programvaresynt
+GenericName[pt]=Sintetizador por Software
+GenericName[pt_BR]=Sintetizador de software
+GenericName[ro]=Sintetizator software
+GenericName[ru]=Программный синтезатор
+GenericName[sl]=Mehki Synth
+GenericName[sr]=Софтверски синтетизатор
+GenericName[sr@Latn]=Softverski sintetizator
+GenericName[sv]=Programvarusynt
+GenericName[ta]=மென்மையான சிந்த்
+GenericName[tr]=Yumuşak Sentez
+GenericName[uk]=Програмний синтезатор
+GenericName[zh_CN]=软波表
+GenericName[zh_HK]=軟件合成器
+StartupNotify=false
+Type=Application
+Categories=Music;AudioVideo;X-Synth;
+_EOF_
+
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+           if [ ! $? = 0 ]; then
+               echo "$0: Error while creating documentation directory!"
+               echo "$0: This should never happen, and building will continue anyway."
+               echo "$0: You should check why this happened."
+               sleep 1
+           fi
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+    mkdir -p $PKG/rootdir/usr/doc
+    if [ ! $? = 0 ]; then
+        echo "$0: Error while creating documentation directory!"
+        echo "$0: This should never happen, and building will continue anyway."
+        echo "$0: You should check why this happened."
+        sleep 1
+    fi
+    (cd $PKG/rootdir/usr/doc
+    ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+    )
+fi
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/man ]; then
+      gzip -9 $PKG/rootdir/$INSTALLPREFIX/man/*/*
+      if [ ! $? = 0 ]; then
+          echo "$0: Error: Cannot gzip man pages under $INSTALLPREFIX/man. Continuing"
+      fi
+   fi
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/share/man ]; then
+      gzip -9 $PKG/rootdir/$INSTALLPREFIX/share/man/*/*
+      if [ ! $? = 0 ]; then
+          echo "$0: Error: Cannot gzip man pages under $INSTALLPREFIX/share/man. Continuing"
+      fi
+   fi
+fi
+if [ -d $PKG/rootdir/$INSTALLPREFIX/info ]; then
+    rm -f $PKG/rootdir/$INSTALLPREFIX/info/dir
+    if [ ! "$GZIPINFO" = "0" ]; then
+        gzip -9 $PKG/rootdir/$INSTALLPREFIX/info/*
+        if [ ! $? = 0 ]; then
+           echo "$0: Error: Cannot gzip info pages under $INSTALLPREFIX/info. Continuing"
+        fi
+    fi
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) ADDer SUBstracter SpecialFX SYNthetizer
+$APPNAME: 
+$APPNAME: ZynAddSubFX is a software synthetizer capable of making a countless
+$APPNAME: number of instruments, from some common heard in expensive hardware
+$APPNAME: to interesting sounds that will boost you to an amazing new universe
+$APPNAME: of sounds.
+$APPNAME: 
+$APPNAME: This package was compiled with JACK and OSS support enabled.
+$APPNAME: 
+$APPNAME: The documentation is available in the homepage: 
+$APPNAME:  http://zynaddsubfx.sourceforge.net/
+_EOS_
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+fltk
+mini-xml
+jack
+_EOS_
+( echo $VERSION | grep -q 'lash$' ) && echo lash >> install/slack-required
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+if [ $UID = 0 ]; then
+    #Almost-safe default:
+    chown -R root:root *
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Cannot change owner to root:root!"
+        echo "           This should never happen. But you should investigate why it happened."
+        echo "           Continuing anyway."
+        sleep 1
+    fi
+else
+    echo "$0: Info: Not root. Omitting changing ownership of files"
+fi
+
+find . \( -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 -exec chmod 644 '{}' '+' \) , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 -exec chmod 755 '{}' '+' \) , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 -exec chmod 755 '{}' '+' \)
+
+#Fix some other permision problems:
+#Maybe add/remove suid bits which are necesary.
+
+#End fix of other permission problems.
+
+ 
+
+if [ $UID = 0 ]; then
+    #Here goes the package :)
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+    if [ ! $? = 0 ]; then
+        echo "$0: Fatal: Error creating the final package. Quitting"
+        exit 1
+    fi
+
+    #cleanup and we're done.
+    cd ..
+    rm -rf rootdir
+    rm -rf $EXTRACTED_DIR
+else
+    echo "$0: Info: Not root. Omitting creation of package $APPNAME-$VERSION-$ARCH-$BUILD.tgz"
+    echo "$0: Info: Not root. Omitting cleaning up of files."
+fi
+
+# vim:encoding=utf-8:fileencoding=utf-8:
+

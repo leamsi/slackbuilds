@@ -1,0 +1,3 @@
+id3lib
+cdmp3
+CDDB_get

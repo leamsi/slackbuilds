@@ -1,0 +1,35 @@
+#!/bin/sh
+
+HTTPD=/usr/sbin/lighttpd
+#PORT=9091
+CONF=/etc/lighttpd/lighttpd.conf
+
+PID_FILE="/var/run/lighttpd.pid"
+
+### FNS ###
+
+httpd_start () {
+    $HTTPD -f $CONF
+}
+
+httpd_stop () {
+    PID=$(cat $PID_FILE) 
+    echo $PID
+    kill  $PID
+}
+
+### MAIN ###
+
+case "$1" in
+   'start')
+        httpd_start ;;
+   'stop')
+        httpd_stop ;;
+   'restart')
+        httpd_stop
+        sleep 1
+        httpd_start ;;
+    *)
+        echo "usage $0 start|stop|restart" ;;
+esac
+

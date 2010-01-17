@@ -1,0 +1,89 @@
+#! /bin/bash
+#
+
+#Arno iptables firewall can be get at http://rocky.molphys.leidenuniv.nl/
+ARCH=noarch
+MYIN=icv
+VERSION=1.8.6b
+BUILD=1$MYIN
+
+SRC_VERSION=1.8.6b
+SRC_DIR_VERSION=1.8.6b
+SRC_PKG=arno-iptables-firewall_$SRC_VERSION.tar.gz
+SRC_DIR=arno-iptables-firewall_$SRC_DIR_VERSION
+SRC_FILE=./$SRC_PKG
+#First thing first: unpack the original package
+tar zxf $SRC_FILE
+
+
+#create the root directory
+mkdir $SRC_DIR/package
+#create the /etc/rc.d directory
+mkdir $SRC_DIR/package/etc
+mkdir $SRC_DIR/package/etc/rc.d
+#move the firewall and its config there
+mv $SRC_DIR/arno-iptables-firewall $SRC_DIR/package/etc/rc.d/rc.firewall
+mv $SRC_DIR/arno-iptables-firewall.conf $SRC_DIR/package/etc/rc.d/rc.firewall.conf.new
+#update rc.firewall to reflect Slackware specific things:
+#This packages uses /etc/rc.d/rc.firewall.conf for firewall configuration
+sed -i 's/CONFIG_FILE=[a-zA-Z./-]*$/CONFIG_FILE=\/etc\/rc.d\/rc.firewall.conf/' $SRC_DIR/package/etc/rc.d/rc.firewall 
+# iptables is  in /usr/sbin/iptables
+sed -i 's/IPTABLES="[a-zA-Z./-]*"$/IPTABLES="\/usr\/sbin\/iptables"/1' $SRC_DIR/package/etc/rc.d/rc.firewall.conf.new
+
+#create the /usr/bin directory
+mkdir $SRC_DIR/package/usr
+mkdir $SRC_DIR/package/usr/bin
+#move the fwfilter there
+mv $SRC_DIR/arno-fwfilter $SRC_DIR/package/usr/bin/arno-fwfilter
+
+#move the syslog.Slackware to make it a viable option
+mv $SRC_DIR/Slackware/syslog.conf $SRC_DIR/package/etc/syslog.conf.new
+
+#move the man page to /usr/man/man?/ and zip it
+mkdir -p $SRC_DIR/package/usr/man/man8/
+mkdir -p $SRC_DIR/package/usr/man/man1/
+mv $SRC_DIR/*.8 $SRC_DIR/package/usr/man/man8/
+mv $SRC_DIR/*.1 $SRC_DIR/package/usr/man/man1/
+gzip -9q $SRC_DIR/package/usr/man/man?/*
+
+#everything else gets moved to /usr/doc/arno-iptables-firewall-<version>
+mkdir $SRC_DIR/package/usr/doc
+mkdir $SRC_DIR/package/usr/doc/arno-iptables-firewall-$VERSION
+mv $SRC_DIR/* $SRC_DIR/package/usr/doc/arno-iptables-firewall-$VERSION
+
+#make the install directory
+mkdir $SRC_DIR/package/install
+#add a nice description text:
+cat > $SRC_DIR/package/install/slack-desc <<FINLINE
+arno-iptables-firewall: Arno's script to configure an iptables firewall
+arno-iptables-firewall: 
+arno-iptables-firewall: An easy to configure,  yet very secure  stateful,  filtering firewall.
+arno-iptables-firewall: See http://rocky.eld.leidenuniv.nl/ for further details. You must edit
+arno-iptables-firewall: the    configuration   file   /etc/rc.d/rc.firewall.conf.     System's
+arno-iptables-firewall: logging isn't automatically  tweaked (you have to  edit syslog.conf or
+arno-iptables-firewall: replace it with the syslog.conf.new provided here).  It can be written
+arno-iptables-firewall: to  /var/log/firewall. The tool  arno-fwfilter is  included  to  check
+arno-iptables-firewall: easily the produced firewall log file.
+arno-iptables-firewall: 
+arno-iptables-firewall: 
+FINLINE
+
+cat > $SRC_DIR/package/install/doinst.sh << FINLINE
+if [ ! -e /etc/rc.d/rc.firewall.conf ]; then
+ mv /etc/rc.d/rc.firewall.conf.new /etc/rc.d/rc.firewall.conf
+fi
+FINLINE
+
+#do the package!
+cd $SRC_DIR/package
+#first check permissions
+chown -R root:root .
+chmod -R 755 .
+#the firewall script must be root readable only
+chmod 700 etc/rc.d/*
+chmod 600 etc/rc.d/rc.firewall.conf.new
+chmod 644 etc/syslog.conf.new
+chmod 644 usr/doc/arno-iptables-firewall-$VERSION/*
+chmod 644 usr/man/man?/*
+#makepkg -l y arno-iptables-firewall-$VERSION-$ARCH-$BUILD.tgz
+

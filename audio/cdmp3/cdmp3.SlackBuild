@@ -1,0 +1,55 @@
+#!/bin/sh
+
+#cdmp3-0.5.0.tar.gz
+# Slackware build script for cdmp3 0.5.0
+# Written by paul wisehart wise@lupulin.net
+
+PRGNAM=cdmp3 
+VERSION=0.5.0  
+
+
+ARCH=${ARCH:-i486}
+BUILD=1pkw
+CWD=`pwd`		
+TMP=${TMP:-/tmp/pkgs}
+PKG=$TMP/pkg-$PRGNAM
+OUTPUT=/tmp
+
+# Set compiler flags
+if [ "$ARCH" = "i486" ]; then
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ]; then
+  SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+fi
+
+# Prepare the building and packaging environment
+rm -rf $PKG
+mkdir -p $PKG
+cd $TMP 
+rm -rf $PRGNAM-$VERSION
+tar xvzf $CWD/$PRGNAM-$VERSION.tar.gz || exit 1
+
+
+
+cd $PRGNAM-$VERSION
+chown -R root:root .
+
+mkdir -p $PKG/usr/bin
+cp cdmp3 $PKG/usr/bin/
+
+# Copy program documentation into the package
+# The included documentation varies from one application to another, so be sure
+# to adjust your script as needed
+# Also, some people like to include the SlackBuild script in the documentation
+# directory
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
+cp -a AUTHORS  ChangeLog  LICENSE  README  $PKG/usr/doc/$PRGNAM-$VERSION
+cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
+
+# Copy the slack-desc (and doinst.sh if necessary) into ./install
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+
+# Make the package; be sure to leave it in $OUTPUT
+cd $PKG
+makepkg -l y -c y $OUTPUT/$PRGNAM-$VERSION-$ARCH-$BUILD.tgz

@@ -1,0 +1,1 @@
+http://easynews.dl.sourceforge.net/sourceforge/scons/scons-0.96.1.tar.gz

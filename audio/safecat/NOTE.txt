@@ -1,0 +1,6 @@
+For now I make this package "by hand".
+
+There's one bin-executable and an accompaning script, and
+2 man pages.
+
+In the directory is a shell of a package structure.

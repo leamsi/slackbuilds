@@ -1,0 +1,8 @@
+   |-----handy-ruler------------------------------------------------------|
+par: Par (a powerfull paragraph formatter)
+par: 
+par: This is a paragraph formatter similar to fmt, but more flexible.
+par:
+par: Make sure to read the man page [man 1 par] and specially the official
+par: documentation under /usr/doc/Par-1.52/par.doc
+par: 

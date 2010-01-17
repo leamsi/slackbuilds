@@ -1,0 +1,436 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.07 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for jack (tested with version(s) 0.101.1)
+# jack can be obtained at jackaudio.org
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=jack
+#This is the version number the package will receive. It is usually the application version.
+# Note: If using SVN version, The version number will be changed by this script
+# to equal the one reported by JACK's configure script.
+VERSION=0.103.0
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+# In the case of x86, an 486 binary can be run in any 486 and more recent
+# processors.
+ARCH=${ARCH:-i486}
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=${CPU:-i686}
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=/usr
+# This is the temp directory where the package will be build.
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=${GZIPMAN:-1}
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=${GZIPINFO:-1}
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=${STRIPEXES:-1}
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+# The name of the source-file
+#  If set to svn, this will checkout the latest svn release of JACK.
+SOURCE_NAME=svn  #svn #jack-audio-connection-kit
+# The version number of the source file.
+SOURCE_VERSION=${VERSION}
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT=.tar.gz
+# The name of the source file.
+SOURCE_FILE=${SOURCE_NAME}-${SOURCE_VERSION}${SOURCE_EXT}
+
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES="AUTHORS COPYING LICENSE CREDITS NEWS TODO README ChangeLog FAQ LICENSE"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+# A few notes on JACK:
+#  1- Is there any reason to leave OSS support, when the kernel will ONLY use
+#   ALSA? -Answer by myself: Yes, on some cards JACK only works properly under
+#    OSS
+#  2- Please don't enable libcap. If you need realtime capabilities you are
+#   better using a 2.6.12+ kernel and PAM with pam_limits, a patched login
+#   which supports limits or the program set_rlimits
+#  Only when you're configuring for > i686, or with --enable-optimize: --enable-sse --enable-mmx 
+#  When building a package for installation across different capabilities CPUs
+#  make sure to use:
+#   --disable-optimize
+PKGCONFIG="--enable-optimization-by-compiler --enable-optimize --enable-sse --enable-mmx --enable-timestamps --enable-dynsimd --enable-stripped-jack --with-html-dir=/usr/doc/$APPNAME-$VERSION"
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$ARCH
+
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+    echo "$0: The script isn't being run as root."
+    echo "$0:  No final pkg is going to be made and permissions will not be set"
+    sleep 1
+fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O3 -ffast-math -fomit-frame-pointer -march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=${INSTALLPREFIX} --with-default-tmpdir=/tmp/jack --mandir=/usr/man" 
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+fi
+
+#Get in the build directory and untar the source file
+cd $PKG
+# Sometimes, you may need to change this command.
+if [ ! "$SOURCE_NAME" = "svn" ]; then
+    tar zxf $SOURCE_DIR/$SOURCE_FILE
+    cd $EXTRACTED_DIR
+else
+    svn co http://subversion.jackaudio.org/jack/trunk/jack
+    if [ ! $? = 0 ]; then
+        echo "Error checking out the lastest SVN revision."
+        exit 1
+    fi
+    cd jack
+
+    # Update VERSION
+    major_version=$(grep '^JACK_MAJOR_VERSION=[0-9]\+$' configure.ac | cut -d'=' -f'2')
+    minor_version=$(grep '^JACK_MINOR_VERSION=[0-9]\+$' configure.ac | cut -d'=' -f'2')
+    micro_version=$(grep '^JACK_MICRO_VERSION=[0-9]\+$' configure.ac | cut -d'=' -f'2')
+    VERSION=${major_version}.${minor_version}.${micro_version}
+    PKGCONFIG=$PKGCONFIG" --with-html-dir=/usr/doc/$APPNAME-$VERSION"
+fi
+
+
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+
+# For netjack -and maybe a few others-
+# Copy source code to /usr/src/jack and symlink /usr/doc/.../src to it.
+#netjack is now part of jack.
+#mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+#mkdir -p $PKG/rootdir/usr/src/jack
+#cp -aR * $PKG/rootdir/usr/src/jack
+#for file in $DOCFILES ; do
+#    if [ ! -z "$file" ]; then
+#        rm -rf $PKG/rootdir/usr/src/jack/$file
+#    fi
+#done
+#
+#rm -f $PKG/rootdir/usr/src/jack/
+#(cd $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+#ln -s /usr/src/jack src
+#)
+#
+
+#Configure this thing.
+# You may need to change the target string (the one which reads
+# i486-slackware-linux-gnu) if it doesn't work with your configure.
+if [ "$SOURCE_NAME" = "svn" ]; then
+    ./autogen.sh --no-conf
+    if [ ! $? = 0 ] ; then
+        echo "Error while generating the configure script!"
+        exit 1
+    fi
+fi
+./configure $SLKCONFIG $PKGCONFIG --program-transform-name='s,i486-slackware-linux-\(.*\),\1,' CFLAGS="$SLKCFLAGS $PKGCFLAGS" CXXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS"  i486-slackware-linux | tee $PKG/configure_log
+if [ ! ${PIPESTATUS[0]} = 0 ]; then
+    echo "$0: Error: Error running configure. Please check the $PKG/configure_log file."
+    exit 1
+fi
+#Make this thing.
+make | tee $PKG/make_log
+if [ ! ${PIPESTATUS[0]} = 0 ]; then
+    echo "$0: Error: Error while make-ing (Most likely a compiler error). Please check the $PKG/make_log file."
+    exit 1
+fi
+#Make the fake root directory (used to store files)
+mkdir $PKG/rootdir
+#Install this ting in the fake root directory
+# Some packages use ROOT instead of DESTDIR, and a few others use something
+# else. Make sure to check that before running up to this point.
+make install DESTDIR=$PKG/rootdir | tee $PKG/install_log
+if [ ! ${PIPESTATUS[0]} = 0 ]; then
+    echo "$0: Error: Error while running the fake install. Please check the $PKG/install_log file."
+    exit 1
+fi
+
+# Sanity tests:
+# Check for the following binaries
+# jackd
+[ ! -e $PKG/rootdir/$INSTALLPREFIX/bin/jackd ] && echo "$0: Error: Jackd not built? Quitting" && exit 1
+# jack_freewheel
+[ ! -e $PKG/rootdir/$INSTALLPREFIX/bin/jack_freewheel ] && echo "$0: Error: jack_freewheel not built? Quitting" && exit 1
+# jack_lsp
+[ ! -e $PKG/rootdir/$INSTALLPREFIX/bin/jack_lsp ] && echo "$0: Error: jack_lsp not built? Quitting" && exit 1
+# jack_connect
+[ ! -e $PKG/rootdir/$INSTALLPREFIX/bin/jack_connect ] && echo "$0: Error: jack_connect not built? Quitting" && exit 1
+# jack_disconnect
+[ ! -e $PKG/rootdir/$INSTALLPREFIX/bin/jack_disconnect ] && echo "$0: Error: jack_disconnect not built? Quitting" && exit 1
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+mkdir -p $PKG/rootdir/tmp/jack
+
+
+#For lazydragon:
+mkdir -p $PKG/rootdir/etc/rc.d
+cat > $PKG/rootdir/etc/rc.d/rc.jack <<_EOF_
+#!/bin/bash
+mount_if_enough_memory () {
+    if [ -e /proc/meminfo ]; then
+        memory=\$(grep MemTotal /proc/meminfo | tr -s ' ' | cut -d ' ' -f 2)
+        # This checks for atleast 512 MB of RAM
+        if [[ \$memory -ge $((512*1024)) ]]; then
+            # This will set the maximum size to 1/4 of the available RAM.
+            # NOTE that with tmpfs the maximum size IS NOT allocated, so it
+            # will only use the RAM equal to the size of the virtual partition.
+            # The 1/2 default should be OK if not running from the LiveDVD
+_EOF_
+if echo $BUILD | grep -q "^[0-9]\+lzy$" ; then
+cat >> $PKG/rootdir/etc/rc.d/rc.jack <<_EOF_
+            mount -t tmpfs -o size=\$((\$memory / 4))k tmpfs /tmp/jack
+_EOF_
+else
+cat >> $PKG/rootdir/etc/rc.d/rc.jack <<_EOF_
+            mount -t tmpfs tmpfs /tmp/jack
+_EOF_
+fi
+cat >> $PKG/rootdir/etc/rc.d/rc.jack <<_EOF_
+            return \$?
+        fi
+    fi
+    return 1
+}
+
+start () {
+    if ! grep -q "/tmp/jack" /proc/mounts ; then
+        if  mount_if_enough_memory ; then
+            echo "Mounting /tmp/jack as tmpfs for improved latency"
+        fi
+    fi
+    if [ -x $INSTALLPREFIX/bin/jackd ]; then
+        echo -n "Starting jack... "
+        if grep -qw jackrealtime /proc/cmdline; then
+            echo "$INSTALLPREFIX/bin/jackd -R -d alsa"
+            $INSTALLPREFIX/bin/jackd -R --sylent -d alsa &
+        else
+            echo "$INSTALLPREFIX/bin/jackd -d alsa"
+            $INSTALLPREFIX/bin/jackd --sylent -d alsa &
+        fi
+        if [ \$UID = 0 ]; then
+            echo "Note: Jack has been started as root. Jack has a bug (or feature?) which"
+            echo "will prevent a non-root application to connect to Jack so you must run all"
+            echo "your JACK-enabled applications as root."
+        fi
+    fi
+}
+
+stop() {
+    killall jackd
+    sleep 5
+    killall -KILL jackd >& /dev/null
+    sleep 1
+}
+
+restart() {
+    stop
+    start
+}
+
+if [[ -z "\$1" || "\$1" = "start" ]]; then
+    start
+elif [ "\$1" = "stop" ]; then
+    stop
+elif [ "\$1" = "restart" ]; then
+    restart
+fi
+_EOF_
+
+if [ ! -e $PKG/rootdir/$INSTALLPREFIX/bin/jackstart ]; then
+cat > $PKG/rootdir/$INSTALLPREFIX/bin/jackstart <<_EOF_
+#!/bin/sh
+
+echo "Warning: libcap is not being used (And is only necesary for 2.4.x kernels anyway). This will just wrap around"
+echo "JACK and start it in real mode."
+if [ -x /usr/bin/set_rlimits ]; then
+    echo "/usr/bin/set_rlimits -r -l $INSTALLPREFIX/bin/jackd -R \$@"
+    /usr/bin/set_rlimits -r -l $INSTALLPREFIX/bin/jackd -R \$@
+else
+    echo "$INSTALLPREFIX/bin/jackd -R \$@"
+    $INSTALLPREFIX/bin/jackd -R \$@
+fi
+_EOF_
+chmod 755 $PKG/rootdir/$INSTALLPREFIX/bin/jackstart
+fi
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+  mkdir -p $PKG/rootdir/usr/doc
+  (cd $PKG/rootdir/usr/doc
+   ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+  )
+fi
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/man ]; then
+      gzip -9q $PKG/rootdir/$INSTALLPREFIX/man/*/*
+   fi
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/share/man ]; then
+       gzip -9q $PKG/rootdir/$INSTALLPREFIX/share/man/*/*
+   fi
+fi
+if [ -d $PKG/rootdir/$INSTALLPREFIX/info ]; then
+    rm -f $PKG/rootdir/$INSTALLPREFIX/info/dir
+    if [ ! "$GZIPINFO" = "0" ]; then
+       gzip -9q $PKG/rootdir/$INSTALLPREFIX/info/*
+    fi
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) JACK Audio Connection Kit.
+$APPNAME: 
+$APPNAME: JACK is a Low-latency audio server which can connect the input and
+$APPNAME: output of a number of audio applications. It was designed from the
+$APPNAME: ground up to be suitable for proffesional audio work.
+$APPNAME: 
+$APPNAME: A 2.6 kernel, with HZ=1000 and pre-emption enabled is recommended to
+$APPNAME: minimize latency, also you may want to have the realtime-lsm module
+$APPNAME: for the kernel installed. Or a 2.6.13+ kernel and a modern pam_limits
+$APPNAME: or a patched shadow package or the program set_rlimits.
+$APPNAME:
+$APPNAME: NOTE: It is recommended that you mount a tmpfs or ramfs in /tmp/jack
+$APPNAME: to further reduce latency.
+_EOS_
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+alsa-lib
+_EOS_
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+if [ $UID = 0 ]; then
+    #Almost-safe default:
+    chown -R root:root *
+fi
+
+find . -perm 664 -exec chmod 644 {} \;
+find . -perm 600 -exec chmod 644 {} \;
+find . -perm 444 -exec chmod 644 {} \;
+find . -perm 400 -exec chmod 644 {} \;
+find . -perm 440 -exec chmod 644 {} \;
+find . -perm 777 -exec chmod 755 {} \;
+find . -perm 775 -exec chmod 755 {} \;
+find . -perm 511 -exec chmod 755 {} \;
+find . -perm 711 -exec chmod 755 {} \;
+find . -perm 555 -exec chmod 755 {} \;
+find . -perm 666 -exec chmod 644 {} \;
+find . -perm 2775 -exec chmod 755 {} \;
+find . -perm 2755 -exec chmod 755 {} \;
+find . -perm 2711 -exec chmod 755 {} \;
+find . -perm 2751 -exec chmod 755 {} \;
+find . -perm 2555 -exec chmod 755 {} \;
+find . -perm 2511 -exec chmod 755 {} \;
+#Fix some other permision problems:
+#Maybe add/remove suid bits which are necesary.
+chmod -R 777 $PKG/rootdir/tmp
+
+#End fix of other permission problems.
+
+ 
+
+if [ $UID = 0 ]; then
+    #Here goes the package :)
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+
+    #cleanup and we're done.
+    cd ..
+    rm -rf rootdir
+    if [ ! "$SOURCE_NAME" = "svn" ]; then
+        rm -rf $EXTRACTED_DIR
+    else
+        rm -rf jack
+    fi
+fi

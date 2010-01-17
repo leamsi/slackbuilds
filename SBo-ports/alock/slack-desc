@@ -1,0 +1,15 @@
+     |------------------------------------------------------------------------|
+alock: alock (Small and Transparent X server Locker)
+alock: 
+alock: Alock locks the X Server until the user enters a password via the 
+alock: keyboard. If the authentication was successful the X server is unlocked
+alock: and the user can continue to work.
+alock: 
+alock: It doesn't provide any fancy animations (like xlock/xscreensaver) and
+alock: never will. Instead the current view is kept, making it totaly
+alock: transparent.
+alock: 
+alock: Please read the manual page to see how to set it up properly.
+alock: 
+alock: It's mantained by mathias.gumz (a fluxbox developer).
+

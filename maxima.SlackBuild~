@@ -1,0 +1,263 @@
+#! /bin/bash
+
+#BUILD SCRIPT FOR maxima (TESTED WITH VERSION(S) 5.9.3,5.11.0)
+# maxima can be obtained at http://maxima.sourceforge.net
+CWD=$(pwd)
+APPNAME=maxima
+VERSION=5.14.0
+ARCH=i486
+CPU=i686
+BUILD=1icv
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+#This means that "make install" auto copies the doc files (README, INSTALL, etc) in some directory,
+# instead of copying or moving those files, this script will create a link in /usr/doc/appname-version
+#which points to the right place.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+#Note that if AUTODOCDIR is set,  these files are ignored
+DOCFILES="README ChangeLog FAQ LICENSE NEWS README.lisps README.i18n" 
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+PKGCONFIG="--enable-clisp --disable-es --disable-es-utf8 --disable-pt --disable-pt-utf8"
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O2 -march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=/usr"
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+SOURCE_EXT=.tar.gz
+SOURCE_FILE=$APPNAME-$VERSION$SOURCE_EXT
+SOURCE_URL[0]=http://internap.dl.sourceforge.net/sourceforge/maxima/$SOURCE_FILE
+
+#The name of the untared directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: Fatal: PKG directory is root! ($PKG)"
+  exit 1
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot create the build directory ($PKG). Quitting."
+       exit 1
+   fi
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot erease old contents of $PKG."
+       echo "$0:        Will continue, but build may fail."
+   fi
+fi
+
+
+cd $SOURCE_DIR
+echo "$0: Info: Will attempt to download ${#SOURCE_URL[*]} files."
+echo "$0: Info: If they already exist, no download will be made."
+for url in ${SOURCE_URL[*]} ; do
+    wget -nc  $url
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Error obtaining source file from url $url."
+        echo "$0:        Will continue, but build may fail."
+    fi
+done
+
+#Get in the build directory and untar the source file
+cd $PKG
+tar zxf $SOURCE_DIR/$SOURCE_FILE
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Cannot extract source."
+    exit 1
+fi
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+   echo "$0: RUN ME AS ROOT ONLY!"
+fi
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+
+#Configure this thing.
+./configure $SLKCONFIG $PKGCONFIG CFLAGS="$SLKCFLAGS $PKGCFLAGS" CXXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS" i486-slackware-linux-gnu
+#Make this thing.
+LANG=C make
+#Make the fake root directory (used to store files)
+mkdir $PKG/rootdir
+#Install this ting in the fake root directory
+LANG=C make install DESTDIR=$PKG/rootdir
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+  mkdir -p $PKG/rootdir/usr/doc
+  (cd $PKG/rootdir/usr/doc
+   ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+  )
+fi
+
+(cd $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+ ln -sf ../../share/maxima/$VERSION/doc doc
+)
+
+#gzip man and info pages
+if [ -d $PKG/rootdir/usr/man/* ]; then
+   gzip -9q $PKG/rootdir/usr/man/*/*
+fi
+#we wont zip info packages for this, as maxima tries to read them un-packaged.
+#we do remove de dir file, though.
+if [ -d $PKG/rootdir/usr/info ]; then
+   rm -f $PKG/rootdir/usr/info/dir
+#   gzip -9q $PKG/rootdir/usr/info/*
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+(
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+  find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+)
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) A Computer Algebra System (Macsyma clone)
+$APPNAME: 
+$APPNAME: $APPNAME is a CAS written in Common Lisp.
+$APPNAME: It is a direct derivative from the MIT's original Macsyma wich was
+$APPNAME: created in the 70's and latter passed on USA's Department Of Energy.
+$APPNAME: 
+$APPNAME: Some parts of Mathematica and Matlab are directly based on Maxima
+$APPNAME: and Macsyma.
+$APPNAME:
+$APPNAME: You can call the X version (depends on tcl/tk) using "xmaxima".
+$APPNAME: 
+_EOS_
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+clisp
+tcl
+tclx
+tk
+_EOS_
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/$APPNAME-$VERSION-$BUILD
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$BUILD/SlackBuild
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Cannot create a copy of this SlackBuild. Continuing."
+fi
+
+
+#Almost-safe default:
+if [ $UID -eq 0 ]; then
+    chown -R root:root *
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Cannot change owner to root:root!"
+        echo "$0:        This should never happen. But you should investigate why it happened."
+        echo "$0:        Continuing anyway."
+        sleep 1
+    fi
+else
+    echo "$0: Info: Not root. Omitting changing ownership of files"
+fi
+# Pat has left the root:bin standard behind! Hurray!
+
+
+
+# Fix some non slackware-standard permissions.
+# Note that neither 660 nor 770 will be fixed.
+find . \(   -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 \) -type f -exec chmod 644 '{}' '+' , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 \) -type f  -exec chmod 755 '{}' '+' , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 \)  -type f -exec chmod 755 '{}' '+'
+
+# A rather interesting warning.
+checkstack ()
+{
+    for E in $@ ; do
+        if readelf -l $E | grep GNU_STACK | grep -q " [R ][W ]X " ; then
+            echo "$0: Warning: Executable file $E has the stack executable."
+            echo "$0:          Sometimes this is desirable, but it can also be a sign of a"
+            echo "$0:          possible stack-overflow based attack."
+            sleep 1
+        fi
+    done
+}
+find . -type f -print | xargs file | grep ELF | cut -f 1 -d : | while read file ; do
+    checkstack "$file"
+done
+
+# Safety net
+chmod 755 .
+[ -e root/ ] && chmod 700 root/
+[ -e bin/ ] && chmod 755 bin/
+[ -e sbin/ ] && chmod 755 sbin/
+[ -e usr/ ] && chmod 755 usr/
+[ -e home/ ] && chmod 755 home/ && chmod 700 home/*
+[ -e etc/ ] && chmod 755 etc/
+[ -e lib/ ] && chmod 755 lib/
+[ -e tmp/ ] && chmod 1777 tmp/
+
+#Fix some other permision problems:
+#Maybe add the suid bits which are necesary.
+
+#End fix of other permission problems.
+
+
+
+#Here goes the package :)
+if [ $UID -eq 0 ]; then
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+    if [ ! $? = 0 ]; then
+        echo "$0: Fatal: Error creating the final package. Quitting"
+        exit 1
+    fi
+
+    #cleanup and we're done.
+    cd $PKG
+    rm -rf rootdir
+    rm -rf $EXTRACTED_DIR
+else
+    echo "$0: Info: Not root. Omitting creation of package $APPNAME-$VERSION-$ARCH-$BUILD.tgz"
+    echo "$0: Info: Not root. Omitting cleaning up of files."
+fi

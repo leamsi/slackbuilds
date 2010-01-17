@@ -1,0 +1,114 @@
+#!/bin/sh
+#
+
+#Build Script for Par (tested with version(s):
+#    1.52, 1.52-i18n.3)
+# Par can be obtained at http://www.nicemice.net/par/
+#
+
+# Written by Ismael Cortes (leamsi.setroc@gmail.com)
+
+# This is a rewrite of  a SlackBuild I had originally
+# wrote. Hopefully it meets the (high) SlackBuild.org
+# standars
+#
+# I, as writer and author, give this script and its
+# intelectual property to the public domain.
+
+
+PRGNAM=par		
+VERSION=1.52
+ARCH=${ARCH:-i486}
+BUILD=${BUILD:-1}
+TAG=${TAG:-_SBo}
+CWD=$(pwd)
+TMP=${TMP:-/tmp/SBo}
+PKG=$TMP/package-$PRGNAM
+OUTPUT=${OUTPUT:-/tmp}
+
+if [ "$ARCH" = "i486" ]; then
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ]; then
+  SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+fi
+
+# These are the files (relative to the extraction dir)
+# which go into /usr/doc/blah-bal/
+DOCFILES="releasenotes par.doc"
+
+# Directory where we can find the source file.
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+
+SRC_VERSION=$(echo $VERSION | sed -e's:\.::')
+
+SOURCE_FILE=Par${SRC_VERSION}.tar.gz
+
+EXTRACTED_DIR=Par${SRC_VERSION}
+
+PATCH_FILE=par_${VERSION}-i18n.3.diff.gz
+
+rm -rf $PKG || exit 1
+mkdir -p $TMP $PKG $OUTPUT || exit 1
+cd $TMP || exit 1
+rm -rf $EXTRACTED_DIR || exit 1
+
+tar -xzvf $SOURCE_DIR/$SOURCE_FILE || exit 1
+cd $EXTRACTED_DIR || exit 1
+
+# Apply the patch.
+#  What this patch offers:
+#   -Internacionalizaton    (i18n)   support    (it's
+#   basically a s/\<char\>/wchar_t/g, plus a few more
+#   functions).
+#   -Fixes a (small) memory leak.
+# If you don't  want to apply it,  either comment out
+# the next block or remove the patch file.
+if [ -r $CWD/$PATCH_FILE ] ; then
+    zcat $CWD/$PATCH_FILE | patch -p1 --verbose  || exit 2
+fi
+
+# Make   the   application.   Note   that   even   if
+# the   way   to   call   make   that   we're   using
+# seems  a   little  hackish,   it  is  how   it  was
+# meant  to   be  used  by  the   author.  Check  out
+# http://www.nicemice.net/par/build-hints.var
+make -f protoMakefile \
+ CC="gcc ${SLKCFLAGS} -c -pedantic -DDONTFREE" \
+ LINK1="gcc -s" \
+ LINK2="-o" || exit 2
+
+# Install the stuff.
+mkdir -p $PKG || exit 2
+mkdir -p $PKG/usr/bin || exit 2
+mv par $PKG/usr/bin || exit 2
+mkdir -p $PKG/usr/man/man1 || exit 2
+mv par.1 $PKG/usr/man/man1 || exit 2
+
+# Move documentation files to where they belong.
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION || exit 3
+
+for i in $DOCFILES; do
+    if [ -e $i ]; then
+        cp $i $PKG/usr/doc/$PRGNAM-$VERSION || exit 3
+    fi
+done
+
+# Gzip the  man page (using *, just in  case I missed
+# something...)
+gzip -9 $PKG/usr/man/man1/* || exit 3
+
+strip --strip-unneeded $PKG/usr/bin/par || exit 3
+
+cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild || exit 3
+
+chown -R root:root $PKG || exit 3
+chmod 755 $PKG/usr/bin/par || exit 3
+chmod 644 $PKG/usr/man/man1/* || exit 3
+chmod 644 $PKG/usr/doc/$PRGNAM-$VERSION/* || exit 3
+
+# Copy the slack-desc into ./install
+mkdir -p $PKG/install || exit 3
+cat $CWD/slack-desc > $PKG/install/slack-desc || exit 3
+
+cd $PKG || exit 3
+/sbin/makepkg -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-$BUILD$TAG.tgz || exit 3

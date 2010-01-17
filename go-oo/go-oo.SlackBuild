@@ -1,0 +1,218 @@
+#!/bin/sh
+
+# Slackware build script for OpenOffice.org
+
+# Copyright 2006-2009  Robby Workman, Northport, Alabama, ASA
+# All rights reserved.
+#
+# Redistribution and use of this script, with or without modification, is
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of this script must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
+#  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+#  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+#  EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+#  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+#  OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+#  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+#  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+#  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# Thanks to Sandman1, Larhzu, and MacIver for early assistance.
+# Thanks to Fred Emmott (http://slamd64.com) for some better code in a few
+#   places and ideas to include the Optimization Solver and disable javaldx.
+# Thanks to hba for the idea to include support for other languages.
+# Thanks to Nille Akerstrom for the diff to support w/JRE tarballs
+# Thanks to ivo@linvo.org for hints on installing extensions
+# Thsnks to necropresto for better x86_64 support
+
+PRGNAM=openoffice.org
+VERSION=3.1.0
+ARCH=${ARCH:-i586}
+BUILD=${BUILD:-5}
+TAG=${TAG:-_SBo}
+
+CWD=$(pwd)
+TMP=${TMP:-/tmp/SBo}
+PKG=$TMP/package-$PRGNAM
+OUTPUT=${OUTPUT:-/tmp}
+
+
+# This should allow you to either pass a different value of OOLANG when you
+# run the script (OOLANG=pt-BR ./openoffice.org.SlackBuild for example) or
+# change it in this script.  Note that you will need to have the correct
+# tarball in the build directory for this to work...
+# You can get localized tarballs from the following location:
+# ftp://ftp.free.fr/mirrors/ftp.openoffice.org/localized/$OOLANG/$VERSION/
+# Thanks to Niki Kovacs for finding this :-)
+OOLANG=${OOLANG:-en-US}
+PKG_LANG=$(echo $OOLANG | sed s/-/_/)	# Leave this alone
+# Some localized versions only ship with a bundled JRE, and we'd like this
+# script to work on those as well...
+WJRE=${WJRE:-no}
+
+# Files to download:
+cat > $CWD/files.txt <<_EOF_
+ooobasis3.1-base-3.1.0-9399.i586.rpm
+ooobasis3.1-binfilter-3.1.0-9399.i586.rpm
+ooobasis3.1-calc-3.1.0-9399.i586.rpm
+ooobasis3.1-core01-3.1.0-9399.i586.rpm
+ooobasis3.1-core02-3.1.0-9399.i586.rpm
+ooobasis3.1-core03-3.1.0-9399.i586.rpm
+ooobasis3.1-core04-3.1.0-9399.i586.rpm
+ooobasis3.1-core05-3.1.0-9399.i586.rpm
+ooobasis3.1-core06-3.1.0-9399.i586.rpm
+ooobasis3.1-core07-3.1.0-9399.i586.rpm
+ooobasis3.1-draw-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-base-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-binfilter-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-calc-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-draw-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-help-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-impress-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-math-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-res-3.1.0-9399.i586.rpm
+ooobasis3.1-$OOLANG-writer-3.1.0-9399.i586.rpm
+ooobasis3.1-gnome-integration-3.1.0-9399.i586.rpm
+ooobasis3.1-graphicfilter-3.1.0-9399.i586.rpm
+ooobasis3.1-images-3.1.0-9399.i586.rpm
+ooobasis3.1-impress-3.1.0-9399.i586.rpm
+ooobasis3.1-javafilter-3.1.0-9399.i586.rpm
+ooobasis3.1-kde-integration-3.1.0-9399.i586.rpm
+ooobasis3.1-math-3.1.0-9399.i586.rpm
+ooobasis3.1-ooofonts-3.1.0-9399.i586.rpm
+ooobasis3.1-ooolinguistic-3.1.0-9399.i586.rpm
+ooobasis3.1-pyuno-3.1.0-9399.i586.rpm
+ooobasis3.1-testtool-3.1.0-9399.i586.rpm
+ooobasis3.1-writer-3.1.0-9399.i586.rpm
+ooobasis3.1-xsltfilter-3.1.0-9399.i586.rpm
+ooobasis3.1-extension-mediawiki-publisher-3.1.0-9399.i586.rpm
+ooobasis3.1-extension-pdf-import-3.1.0-9399.i586.rpm
+ooobasis3.1-extension-presentation-minimizer-3.1.0-9399.i586.rpm
+ooobasis3.1-extension-presenter-screen-3.1.0-9399.i586.rpm
+ooobasis3.1-extension-report-builder-3.1.0-9399.i586.rpm
+openoffice.org-ure-1.5.0-9399.i586.rpm
+openoffice.org3-3.1.0-9399.i586.rpm
+openoffice.org3-base-3.1.0-9399.i586.rpm
+openoffice.org3-calc-3.1.0-9399.i586.rpm
+openoffice.org3-draw-3.1.0-9399.i586.rpm
+openoffice.org3-$OOLANG-3.1.0-9399.i586.rpm
+openoffice.org3-impress-3.1.0-9399.i586.rpm
+openoffice.org3-math-3.1.0-9399.i586.rpm
+openoffice.org3-writer-3.1.0-9399.i586.rpm
+openoffice.org3.1-freedesktop-menus-3.1-9399.noarch.rpm
+_EOF_
+
+# If you want to disable java support by removing executable permissions
+# form OOo's java loader (this will not affect other apps), set this
+# variable to "YES"   Default is "NO"
+DISABLE_JAVA=${DISABLE_JAVA:-NO}
+
+# Change source package name
+if [ "$ARCH" = "i586" ]; then
+  PKGARCH="Intel"
+elif [ "$ARCH" = "x86_64" ]; then
+  PKGARCH="X86-64"
+  WJRE=no  #Overwrite WJRE option since they don't ship a x86_64 with JRE.
+fi
+
+# Yes, I know there is a Slackware integration file in the desktop-integration
+# directory, but it's worthless to us.  I'd prefer to do things correctly.
+
+# Ignore this - it's just to get the toplevel directory name of the 
+# extracted tarball archive
+#if [ $WJRE != no ]; then
+#  SOURCEDIR=$(tar tzf $CWD/OOo_${VERSION}_Linux${PKGARCH}_install_wJRE_${OOLANG}.tar.gz | head -1 | tr -d \/)
+#else
+#  SOURCEDIR=$(tar tzf $CWD/OOo_${VERSION}_Linux${PKGARCH}_install_${OOLANG}.tar.gz | head -1 | tr -d \/)
+#fi
+## If the above operation failed for some reason, unset SOURCEDIR so that
+## the "set -eu" below will cause us to bail out with an error
+#[ -z $SOURCEDIR ] && unset SOURCEDIR
+SOURCEDIR=go-oo.o
+  
+set -eu
+
+rm -rf $PKG
+mkdir -p $TMP $PKG $OUTPUT
+#rm -rf $TMP/$SOURCEDIR
+mkdir -p $TMP/$SOURCEDIR
+
+# Handle the tarballs that include a bundled JRE
+#if [ $WJRE != no ]; then
+#  tar xvf $CWD/OOo_${VERSION}_Linux${PKGARCH}_install_wJRE_${OOLANG}.tar.gz -C $TMP
+#  rm -rf $TMP/$SOURCEDIR/{JavaSetup.jar,installdata,setup}
+#  rm -rf $TMP/$SOURCEDIR/RPMS/{userland,jre-*-linux-i586.rpm}
+#else
+#  tar xvf $CWD/OOo_${VERSION}_Linux${PKGARCH}_install_${OOLANG}.tar.gz -C $TMP
+#fi
+
+cd $TMP/$SOURCEDIR/
+pwd
+
+wget -nc -i $CWD/files.txt -B http://go-oo.mirrorbrain.org/stable/linux-i586/3.1/
+
+#mv desktop-integration/openoffice.org3.1-freedesktop-menus-3.1-9393.noarch.rpm .
+#rm *onlineupdate*.rpm # We don't want this
+for FILE in *.rpm ; do rpm2cpio < $FILE | cpio -imdv ; done
+rm -rf desktop-integration *.rpm
+mv opt usr $PKG
+cd $PKG
+
+# Create symlinks in /usr/bin to actual binaries
+cd $PKG/usr/bin
+  for FILE in \
+    sbase scalc sdraw simpress smath soffice spadmin swriter unopkg ; do 
+      rm -f $FILE
+      ln -sf ../../opt/openoffice.org3/program/$FILE $FILE ;
+  done 
+cd -
+
+# Remove DejaVu and Liberation fonts - these are included in other packages
+rm -f opt/openoffice.org/basis3.1/share/fonts/truetype/[DL]*.ttf
+
+# Fix Exec commands in the desktop files
+# See http://bugzilla.xfce.org/show_bug.cgi?id=2430 
+cd $PKG//opt/openoffice.org3/share/xdg/
+  for APP in base calc draw impress math writer; do
+    sed -i 's%Exec=openoffice.org3 -%Exec=s%' $APP.desktop ;
+  done
+cd -
+
+# Install extensions
+UNOPKG_BIN=$PKG/opt/openoffice.org3/program/unopkg
+DICT_DIR=$PKG/opt/openoffice.org3/share/extension/install
+if [ -x "$UNOPKG_BIN" ]; then
+  UNOPKG_TMP=$TMP/$$$$$$
+  find $DICT_DIR -type f -name "*.oxt" \
+    -exec $UNOPKG_BIN add --shared {} \
+    "-env:UserInstallation=file:///$UNOPKG_TMP" \;
+  rm -rf $UNOPKG_TMP 	# Clean up after ourselves
+fi
+
+# Move docs to their expected locations
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
+cd $PKG/opt/openoffice.org3
+  mv README* *LICENSE* readmes licenses $PKG/usr/doc/$PRGNAM-$VERSION
+cd -
+#cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
+
+# Disable Java support if desired (see above)
+if [ "$DISABLE_JAVA" = "YES" ]; then
+  chmod -x $PKG/opt/openoffice.org/ure/bin/javaldx
+fi
+
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+cat $CWD/doinst.sh > $PKG/install/doinst.sh
+
+# Fix ownership and permissions and make the package
+chown -R root:root .
+find . -type d -exec chmod 755 {} \;
+chmod -R u+rw,go+r-w,a-s .
+/sbin/makepkg -c n -l y $OUTPUT/$PRGNAM-${VERSION}_${PKG_LANG}-$ARCH-$BUILD$TAG.tgz

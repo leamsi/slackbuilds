@@ -1,0 +1,1 @@
+http://easynews.dl.sourceforge.net/sourceforge/esmtp/esmtp-0.5.1.tar.bz2

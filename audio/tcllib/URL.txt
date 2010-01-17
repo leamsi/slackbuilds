@@ -1,0 +1,2 @@
+http://easynews.dl.sourceforge.net/sourceforge/tcllib/tcllib-1.8.tar.bz2
+http://pascal.scheffers.net/stan/dict/dict-8.5.1-linux-i386.tar.gz

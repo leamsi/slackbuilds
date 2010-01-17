@@ -1,0 +1,9 @@
+          |-----handy-ruler------------------------------------------------------|
+libsndfile:  libsndfile (A C library for reading/writing sounds)
+libsndfile: It is multi-platform, and can handle little and big-endian files.
+libsndfile: 
+libsndfile: It's features:
+libsndfile:   Read and write many WAV file formats.
+libsndfile:   Simple, elegant and easy API
+libsndfile:   On the fly conversion      
+libsndfile:   Optional normalization

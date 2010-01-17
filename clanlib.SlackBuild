@@ -1,0 +1,253 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.0.2 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for clanlib (tested with version(s) 0.8.0-RC2)
+# clanlib can be obtained at http://www.clanlib.org/download.html
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=clanlib
+APPTARNAME=ClanLib
+#This is the version number the package will receive. It is usually the application version.
+VERSION=0.8.0_RC2
+APPVERSION=0.8.0-RC2
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+ARCH=i486
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=i686
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=/usr
+# This is the temp directory where the package will be build.
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES="AUTHORS COPYING LICENSE CREDITS NEWS TODO README ChangeLog FAQ LICENSE ascii-logo"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+PKGCONFIG="--enable-asm386 --enable-dyn \
+--enable-docs \
+--enable-clanDisplay \
+--enable-clanSDL \
+--enable-clanGL \
+--enable-clanSound \
+--enable-clanNetwork \
+--enable-clanGUI \
+--enable-clanMikMod \
+--enable-clanVorbis \
+--enable-getaddr \
+--disable-static \
+--disable-sdltest"
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=1
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=1
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=1
+
+#Where the source file is located
+SOURCE_DIR=$(pwd)
+SOURCE_EXT=.tgz
+SOURCE_FILE=${APPTARNAME}-${APPVERSION}${SOURCE_EXT}
+
+#The name of the untared directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+
+#You should only run this as root (because you need to change permissions)
+#if [ ! $UID = 0 ]; then
+#   echo "$0: RUN ME AS ROOT ONLY!"
+#   exit
+#fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O2 -march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=${INSTALLPREFIX}"
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+fi
+
+#Get in the build directory and untar the source file
+cd $PKG
+tar zxf $SOURCE_DIR/$SOURCE_FILE
+
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+
+#Configure this thing.
+# You may need to change the target string (the one which reads
+# i486-slackware-linux-gnu) if it doesn't work with your configure.
+./configure $SLKCONFIG $PKGCONFIG CFLAGS="$SLKCFLAGS $PKGCFLAGS" CXXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS"  i486-slackware-linux
+#Make this thing.
+make -j2
+#Make the fake root directory (used to store files)
+mkdir $PKG/rootdir
+#Install this ting in the fake root directory
+# Some packages use ROOT instead of DESTDIR, and a few others use something
+# else. Make sure to check that before running up to this point.
+make install DESTDIR=$PKG/rootdir
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+  mkdir -p $PKG/rootdir/usr/doc
+  (cd $PKG/rootdir/usr/doc
+   ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+  )
+fi
+
+( cd $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+  ln -s $PREFIX/share/doc/clanlib clanlib )
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $PKG/rootdir/usr/man/* ]; then
+      gzip -9q $PKG/rootdir/usr/man/*/*
+   fi
+fi
+if [ ! "$GZIPINFO" = "0" ]; then
+   if [ -d $PKG/rootdir/usr/info ]; then
+       rm -f $PKG/rootdir/usr/info/dir
+       gzip -9q $PKG/rootdir/usr/info/*
+   fi
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($APPVERSION) A cross-platform C++ game-engine library.
+$APPNAME: 
+$APPNAME: It could be considered as a C++ framework, speciallized in games. It
+$APPNAME: features:
+$APPNAME:  *Cross Platform runtime API.
+$APPNAME:  *Template-based signal library.
+$APPNAME:  *Sound mixer, with wav, ogg and mikmod.
+$APPNAME:  *High-level 2D graphics API, supporting OpenGL and SDL, with batch
+$APPNAME: rendering, and sprite animation.
+$APPNAME:  *2D collision detection.
+$APPNAME: Make sure to RTFM if you want to use it!
+_EOS_
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+_EOS_
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+#Almost-safe default:
+chown -R root:root *
+# Pat has left the root:bin standard behind! Hurray!
+
+find . -perm 664 -exec chmod 644 {} \;
+find . -perm 600 -exec chmod 644 {} \;
+find . -perm 444 -exec chmod 644 {} \;
+find . -perm 400 -exec chmod 644 {} \;
+find . -perm 440 -exec chmod 644 {} \;
+find . -perm 777 -exec chmod 755 {} \;
+find . -perm 775 -exec chmod 755 {} \;
+find . -perm 511 -exec chmod 755 {} \;
+find . -perm 711 -exec chmod 755 {} \;
+find . -perm 555 -exec chmod 755 {} \;
+find . -perm 666 -exec chmod 644 {} \;
+find . -perm 2775 -exec chmod 755 {} \;
+find . -perm 2755 -exec chmod 755 {} \;
+find . -perm 2711 -exec chmod 755 {} \;
+find . -perm 2751 -exec chmod 755 {} \;
+find . -perm 2555 -exec chmod 755 {} \;
+find . -perm 2511 -exec chmod 755 {} \;
+#Fix some other permision problems:
+#Maybe add the suid bits which are necesary.
+
+#End fix of other permission problems.
+
+
+#Here goes the package :)
+/sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+
+
+#cleanup and we're done.
+cd ..
+rm -rf rootdir
+rm -rf $EXTRACTED_DIR

@@ -1,0 +1,115 @@
+#!/bin/sh
+
+# Slackware build script for OpenCV
+
+# Written by Ismael C (leamsi.setroc@gmail.com)
+#
+# Submitted into public domain, 04/Sep/2008.
+
+PRGNAM=opencv
+VERSION=${VERSION:-$(date +"%Y%m%d")}
+ARCH=${ARCH:-i686}		# Note for self. Before submition to SB.org change to "i486"
+BUILD=${BUILD:-1}
+TAG=${TAG:-_SBo}		# the "_SBo" is required
+
+CWD=$(pwd)
+TMP=${TMP:-/tmp/SBo}	# For consistency's sake, use this
+PKG=${PKG:-$TMP/package-$PRGNAM}
+OUTPUT=${OUTPUT:-/tmp}	# Drop the package in /tmp
+
+OPENMP=${OPENMP:-1}     # Set to 1 if you want to use a multithread-enabled library.
+FFMPEG=${FFMPEG:-0}     # Set to 1 if you prefer to use ffmpeg (more features and more tested than xine).
+
+if [ "$ARCH" = "i486" ]; then
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+  LIBDIRSUFFIX=""
+elif [ "$ARCH" = "i686" ]; then
+  #SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+  LIBDIRSUFFIX=""
+elif [ "$ARCH" = "x86_64" ]; then
+  SLKCFLAGS="-O2 -fPIC"
+  LIBDIRSUFFIX="64"
+fi
+
+
+set -e # Exit on most errors
+
+# Note for self. Remove before submition to SB.org.
+echo "Slackbuild for $PRGNAM-$VERSION-$ARCH-$BUILD$TAG"
+
+rm -rf $PKG
+mkdir -p $TMP $PKG $OUTPUT
+cd $TMP
+rm -rf $PRGNAM
+
+# Get the latest version from SVN repository.
+svn export https://opencvlibrary.svn.sourceforge.net/svnroot/opencvlibrary/trunk/opencv opencv 
+
+cd $PRGNAM
+chown -R root:root . || true
+find . \
+ \( -perm 777 -o -perm 775 -o -perm 711 -o -perm 555 -o -perm 511 \) \
+ -exec chmod 755 {} \; , \
+ \( -perm 666 -o -perm 664 -o -perm 600 -o -perm 444 -o -perm 440 -o -perm 400 \) \
+ -exec chmod 644 {} \;
+
+if [ "$OPENMP" = "1" ]; then 
+    OPENMPFLAG="--enable-openmp" 
+else
+    OPENMPFLAG="--disable-openmp"
+fi
+
+#if [ "$FFMPEG" = "1" ]; then
+#    VIDEOFLAG="--with-ffmpeg"
+#else
+#    VIDEOFLAG="--with-xine --without-quicktime"
+#fi
+
+# The OpenCV Install file gets overwritten by autoreconf.
+mv INSTALL INSTALL.orig
+
+# As per the instructions on the INSTALL file.
+#autoreconf -i --force
+
+mkdir opencv-build && cd opencv-build
+cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_OPENMP=$OPENMP -DUSE_SSE=1 -DUSE_SSE2=1 -DUSE_SSE3=1 -DBUILD_LATEX_DOCS=1 -DWITH_FFMPEG=$FFMPEG
+
+#CFLAGS="$SLKCFLAGS" \
+#CXXFLAGS="$SLKCFLAGS" \
+#./configure \
+#  --prefix=/usr \
+#  --sysconfdir=/etc \
+#  --localstatedir=/var \
+#  --mandir=/usr/man \
+#  --with-swig \
+#  $VIDEOFLAG \
+#  $OPENMPFLAG
+
+# Compile the application and install it into the $PKG directory
+make -j2
+make install DESTDIR=$PKG
+
+# NOTE FOR SELF. Uncomment this before submitting to SB.org
+# Strip binaries and libraries - this can be done with 'make install-strip'
+# in many source trees, and that's usually acceptable if so, but if not, 
+# use this:
+( cd $PKG
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+)
+
+# Link the already copied documentation and samples into /usr/doc as per
+# Slackware standard.
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
+ln -s /usr/share/opencv $PKG/usr/doc/$PRGNAM-$VERSION
+cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
+mv INSTALL.orig $PKG/usr/doc/$PRGNAM-$VERSION/INSTALL
+mv AUTHORS COPYING ChangeLog THANKS $PKG/usr/doc/$PRGNAM-$VERSION/
+
+# Copy the slack-desc into ./install
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+
+# Make the package; be sure to leave it in $OUTPUT
+cd $PKG
+/sbin/makepkg -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-$BUILD$TAG.tgz

@@ -1,0 +1,2 @@
+http://www.sirlab.de/linux/download/vocoder-ladspa-0.3.tgz
+http://music.columbia.edu/pipermail/linux-audio-user/attachments/20060724/f79ad59a/stereo-0001.bin

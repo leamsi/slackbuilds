@@ -1,0 +1,258 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.0 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for Crafty (tested with version(s) 20.1)
+# Crafty can be obtained at ftp://ftp.cis.uab.edu/pub/hyatt/
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=crafty
+#This is the version number the package will receive. It is usually the application version.
+VERSION=20.1
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+ARCH=i486
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=i686
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+# YES. I'm installing crafty to /opt/crafty
+# mostly because it searches too many things in the current directory (like the
+# help file) instead of a predefined directory.
+INSTALLPREFIX=/usr
+# This is the temp directory where the package will be build.
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+# You must get these separately from the crafty homepage.
+DOCFILES="$CWD/crafty.doc.ascii $CWD/crafty.doc.ps $CWD/tournament.howto"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+# Interesting flags related to crafty: -DSMP -DCPUS=n  -- Enables SMP with n
+#                                                          cpus
+#                                      -DNUMA          -- Enables use of
+#                                                          libnuma
+PKGCFLAGS=" -Wall -pipe -D_REENTRANT -fbranch-probabilities -fforce-mem -fomit-frame-pointer -fno-gcse -mpreferred-stack-boundary=2"
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+#PKGCONFIG="--enable-something=yes --enable-something-else=no"
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=1
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=1
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=1
+
+#Where the source file is located
+SOURCE_DIR=$(pwd)
+SOURCE_EXT=.zip
+SOURCE_FILE=${APPNAME}-${VERSION}${SOURCE_EXT}
+
+#The name of the untared directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+   echo "$0: RUN ME AS ROOT ONLY!"
+   exit
+fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O3 -march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="-O2 -march=$ARCH -mtune=$CPU"
+SLKCONFIG="--prefix=${INSTALLPREFIX}"
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+fi
+
+#Get in the build directory and untar the source file
+cd $PKG
+unzip $SOURCE_DIR/$SOURCE_FILE
+
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+
+#Make this thing.
+make \
+  target=LINUX \
+  CC="gcc" \
+  CXX="g++" \
+  CFLAGS="$SLKCFLAGS $PKGCFLAGS" \
+  CXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS" \
+  LDFLAGS="-lstdc++" \
+  opt="-DFUTILITY  -DFAST  -DINLINE_ASM  -DEPD  -DLOGDIR=\\\".\\\" -DBOOKDIR=\\\"${INSTALLPREFIX}/share/crafty/books\\\" -DRCDIR=\\\"${INSTALLPREFIX}/share/crafty/\\\"  -DTBDIR=\\\"${INSTALLPREFIX}/share/crafty/TB\\\"" \
+  crafty-make
+#Make the fake root directory (used to store files)
+mkdir $PKG/rootdir
+#Install this ting in the fake root directory
+mkdir -p $PKG/rootdir/${INSTALLPREFIX}/bin
+mv crafty $PKG/rootdir/${INSTALLPREFIX}/bin
+chmod 755 $PKG/rootdir/${INSTALLPREFIX}/bin/crafty
+mv crafty.hlp $PKG/rootdir/${INSTALLPREFIX}/bin
+mkdir -p $PKG/rootdir/${INSTALLPREFIX}/share/crafty/TB
+chmod 644 $PKG/rootdir/${INSTALLPREFIX}/share/crafty/crafty.hlp
+
+#mkdir -p $PKG/rootdir/usr/bin
+#( cd $PKG/rootdir/usr/bin
+#  ln -s $INSTALLPREFIX/bin/crafty crafty
+#)
+cat > $PKG/rootdir/${INSTALLPREFIX}/bin/xboard-crafty << __EOF__
+#!/bin/bash
+which xboard 1> /dev/null 2> /dev/null
+if [ "\$?" -e "0" ]; then
+    [ -x ${INSTALLPREFIX}/bin/crafty ] && xboard -firstChessProgram "${INSTALLPREFIX}/bin/crafty" -firstDirectory "${INSTALLPREFIX}/share/crafty"
+fi
+__EOF__
+chmod 755 $PKG/rootdir/${INSTALLPREFIX}/bin/xboard-crafty
+mkdir -p $PKG/rootdir/${INSTALLPREFIX}/share/crafty/books
+[ -r $CWD/book.bin ] && cp $CWD/book.bin $PKG/rootdir/${INSTALLPREFIX}/share/crafty/books/
+[ -r $CWD/bookc.bin ] && cp $CWD/bookc.bin $PKG/rootdir/${INSTALLPREFIX}/share/crafty/books/
+[ -r $CWD/books.bin ] && cp $CWD/books.bin $PKG/rootdir/${INSTALLPREFIX}/share/crafty/books/
+mkdir -p $PKG/rootdir/${INSTALLPREFIX}/man/man6
+[ -r $CWD/crafty.man ] && cp $CWD/crafty.man $PKG/rootdir/${INSTALLPREFIX}/man/man6/crafty.6
+
+#copy doc files
+for i in $DOCFILES; do
+    if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+            mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+            cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+            cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+    fi
+done
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $PKG/rootdir/usr/man/* ]; then
+      gzip -9q $PKG/rootdir/usr/man/*/*
+   fi
+fi
+if [ ! "$GZIPINFO" = "0" ]; then
+   if [ -d $PKG/rootdir/usr/info ]; then
+       rm -f $PKG/rootdir/usr/info/dir
+       gzip -9q $PKG/rootdir/usr/info/*
+   fi
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) a free but powerfull chess engine.
+$APPNAME: 
+$APPNAME:  Crafty is the most powerfull free chess engine avaiable, and it'll
+$APPNAME: probably give you a hard time trying to beat.
+$APPNAME:  This packages includes an script to launch xboard with crafty as the
+$APPNAME: game engine, called 'xboard-script'.
+$APPNAME:  You can download endgame databases (to improve gameplay) from
+$APPNAME: ftp://ftp.cis.uab.edu/pub/hyatt/TB and put them under
+$APPNAME: ${INSTALLPREFIX}/share/crafty/TB
+$APPNAME:  Compiled with -DRCDIR=$INSTALLPREFIX/share/crafty -DFAST -DEPD
+$APPNAME: -DINLINE_ASM -DFUTILITY -DTBDIR=$INSTALLPREFIX/share/TB
+_EOS_
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+_EOS_
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+#Almost-safe default:
+chown -R root:root *
+# Pat has left the root:bin standard behind! Hurray!
+
+find . -perm 664 -exec chmod 644 {} \;
+find . -perm 600 -exec chmod 644 {} \;
+find . -perm 444 -exec chmod 644 {} \;
+find . -perm 400 -exec chmod 644 {} \;
+find . -perm 440 -exec chmod 644 {} \;
+find . -perm 777 -exec chmod 755 {} \;
+find . -perm 775 -exec chmod 755 {} \;
+find . -perm 511 -exec chmod 755 {} \;
+find . -perm 711 -exec chmod 755 {} \;
+find . -perm 555 -exec chmod 755 {} \;
+find . -perm 666 -exec chmod 644 {} \;
+find . -perm 2775 -exec chmod 755 {} \;
+find . -perm 2755 -exec chmod 755 {} \;
+find . -perm 2711 -exec chmod 755 {} \;
+find . -perm 2751 -exec chmod 755 {} \;
+find . -perm 2555 -exec chmod 755 {} \;
+find . -perm 2511 -exec chmod 755 {} \;
+#Fix some other permision problems:
+#Maybe add the suid bits which are necesary.
+
+#End fix of other permission problems.
+
+exit
+ 
+
+#Here goes the package :)
+/sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+
+#cleanup and we're done.
+cd ..
+rm -rf rootdir
+rm -rf $EXTRACTED_DIR

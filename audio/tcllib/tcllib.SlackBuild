@@ -1,0 +1,84 @@
+#!/bin/sh
+
+#tcllib-1.8.tar.bz2
+# Slackware build script for tcllib 1.8
+# Written by paul wisehart wise@lupulin.net
+
+PRGNAM=tcllib 
+VERSION=1.8     
+
+
+ARCH=${ARCH:-i486}
+BUILD=1pkw
+CWD=`pwd`		
+TMP=${TMP:-/tmp/pkgs}
+PKG=$TMP/pkg-$PRGNAM
+OUTPUT=/tmp
+
+# Set compiler flags
+if [ "$ARCH" = "i486" ]; then
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ]; then
+  SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+fi
+
+# Prepare the building and packaging environment
+rm -rf $PKG
+mkdir -p $PKG
+cd $TMP 
+rm -rf $PRGNAM-$VERSION
+tar xvjf $CWD/$PRGNAM-$VERSION.tar.bz2 || exit 1
+
+
+
+cd $PRGNAM-$VERSION
+chown -R root:root .
+
+### ./configure ... ###
+CFLAGS="$SLKCFLAGS" \
+CXXFLAGS="$SLKCFLAGS" \
+./configure \
+  --prefix=/usr \
+  --sysconfdir=/etc \
+  --localstatedir=/var || exit 1
+
+# Compile the applicationa and install it into the $PKG directory
+make DESTDIR=$PKG || exit 1
+make install DESTDIR=$PKG || exit 1
+
+# Compress man pages; note that if there are any symlinks in those directories,
+# you'll have to manually fix those in the script as well
+if [ -d $PKG/usr/man ]; then
+  gzip -9 $PKG/usr/man/man?/*
+fi
+
+# Copy program documentation into the package
+# The included documentation varies from one application to another, so be sure
+# to adjust your script as needed
+# Also, some people like to include the SlackBuild script in the documentation
+# directory
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
+cp -a \
+    ChangeLog         \
+    DESCRIPTION.txt   \
+    INSTALL.txt       \
+    README-1.8.txt    \
+    PACKAGES          \
+    STATUS            \
+    README            \
+    doc/* $PKG/usr/doc/$PRGNAM-$VERSION
+cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
+
+# Copy the slack-desc (and doinst.sh if necessary) into ./install
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+
+### add in dict ...
+#dict-8.5.1-linux-i386.tar.gz
+cd $PKG/usr/lib/${PRGNAM}${VERSION}
+tar xvzf  ${CWD}/dict-8.5.1-linux-i386.tar.gz
+mv dict-8.5.1 dict
+
+# Make the package; be sure to leave it in $OUTPUT
+cd $PKG
+makepkg -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-$BUILD.tgz

@@ -1,0 +1,49 @@
+Erlang  is a  functional, object-oriented  and concurrent  programming language
+created  at  Ericsson with  many  features  more  commonly associated  with  an
+operating system than a programming language: concurrent processes, scheduling,
+memory management, distribution, networking, ...  Its syntax is based mostly on
+Prolog with some Lisp-ism and Python-isms around.
+
+It has the following notable features:
+
+-  Concurrency:  Extremely  lightweight   processes,  no  requirements  for  OS
+concurrency, native assynchronous comunication between processes.
+
+-  Distribution: It's  designed  to be  run in  a  distributed enviroment,  and
+changing a multi-process program in Erlang  to work in a distributed fashion is
+a trivial process.
+
+-  Robustness:  Several  error  detection  primitives  allow  the  creation  of
+fault-tolerant systems.
+
+- Soft real-time: Erlang supports soft realtime systems by using an incremental
+garbage collector.
+
+- Hot-code  upgrade: You  can change code  in a running  system in  a phase-out
+fashion. (Check the documentation, this is a superv feature).
+
+- External interface: Makes it easy to work with non-Erlang programs/libraries.
+
+Includes a few useful programs (HTTP  server and a distributed DB, for example)
+and a library filled with interesting tools (ASN.1, Compiler(s), a GUI library,
+OS Monitor, standard library, ...).
+
+More information in the Erlang White-Paper:
+
+    http://erlang.org/white_paper.html
+
+NOTE: The source code  doesn't include the man pages, which  I recommend you to
+get.  There's  a  separate  SlackBuild  for them,  which  should  install  them
+correctly, so "erl -man" can work.
+
+It can optionally use  tcl, openssl  and the  JDK >= 1.4.2  (NOT the  JRE). All
+those come with Slackware.
+
+You can find Complete and Full documentation at
+
+    http://erlang.org/doc.html
+
+
+You can watch a funny(?) video of Erlang at 
+
+  http://youtube.com/watch?v=uKfKtXYLG78

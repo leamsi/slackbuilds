@@ -1,0 +1,96 @@
+#!/bin/sh
+#
+# Isn't the ${X:-x} syntaxis a BASHism, anyway?
+
+# Build    Script   for    pstotext   (tested    with
+# version(s):  1.9)  pstotext   can  be  obtained  at
+# http://www.cs.wisc.edu/~ghost/doc/pstotext.htm
+#
+
+# Written by Ismael Cortes (leamsi.setroc@gmail.com)
+
+# This   is  a   rewrite  of   a  SlackBuild   I  had
+# originally  wrote. Hopefully  it  meets the  (high)
+# SlackBuilds.org standars
+#
+# I, as writer  and author, give this  script and its
+# intelectual property to the public domain.
+
+# Just for debug
+set -x
+
+PRGNAM=pstotext
+VERSION=1.9
+ARCH=${ARCH:-i486}
+BUILD=${BUILD:-1}
+TAG=${TAG:-_SBo}
+CWD=$(pwd)
+TMP=${TMP:-/tmp/SBo}
+PKG=$TMP/package-$PRGNAM
+OUTPUT=${OUTPUT:-/tmp}
+
+if [ "$ARCH" = "i486" ]; then
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ]; then
+  SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+fi
+
+#  Directory  where   the  Source  File   is  located
+# (defaults to current dir).
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+
+# Filename of the source file.
+SOURCE_FILE=pstotext-${VERSION}.tar.gz
+
+# Directory to cd to after extraction.
+EXTRACTED_DIR=pstotext-${VERSION}
+
+# Doc  files which go to  /usr/doc/blah-bal, relative
+# to the extracted directory.
+DOCFILES="pstotext.hlp pstotext.txt"
+
+# Cleanup and get ready.
+rm -rf $PKG
+mkdir -p $TMP $PKG $OUTPUT || exit 1
+cd $TMP || exit 1
+rm -rf $EXTRACTED_DIR
+tar -xzvf $SOURCE_DIR/$PRGNAM-$VERSION.tar.gz || exit 1
+cd $EXTRACTED_DIR || exit 1
+
+
+# Compile the application and install it into the $PKG directory
+make CC="gcc $SLKCFLAGS" || exit 2
+
+# Install...
+mkdir -p $PKG/usr/bin || exit 2
+mv pstotext $PKG/usr/bin/ || exit 2
+chmod 755 $PKG/usr/bin/pstotext || exit 2
+# Install and gzip man page.
+mkdir -p $PKG/usr/man/man1 || exit 2
+gzip -9c pstotext.1 > $PKG/usr/man/man1/pstotext.1.gz  || exit 2
+chmod 644 $PKG/usr/man/man1/pstotext.1.gz || exit 2
+
+# Strip binaries.
+strip --strip-unneeded $PKG/usr/bin/pstotext || exit 3
+
+# Install DOCFILES into /usr/doc/blah-bal/
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION || exit 3
+
+for i in $DOCFILES; do
+    if [ -e $i ]; then
+        cp $i $PKG/usr/doc/$PRGNAM-$VERSION || exit 3
+    fi
+done
+cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild || exit 3
+
+chmod 644 $PKG/usr/doc/$PRGNAM-$VERSION/* || exit 3
+
+# Copy the slack-desc into ./install
+mkdir -p $PKG/install || exit 3
+cat $CWD/slack-desc > $PKG/install/slack-desc || exit 3
+
+chown -R root:root $PKG || exit 3
+
+# Make the package; be sure to leave it in $OUTPUT
+cd $PKG || exit 3
+/sbin/makepkg -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-$BUILD$TAG.tgz || exit 3

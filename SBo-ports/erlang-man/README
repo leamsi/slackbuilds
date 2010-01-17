@@ -1,0 +1,9 @@
+These  are  the man  pages  of  the  Erlang  run-time enviroment.  It  includes
+documentation for pretty  much all of the standar library  and the applications
+which came bundled with erlang.
+
+Full   documentation,  including   principles,  embedded   system  instalation,
+reference manual,  examples efficiency  guide, Database applications,  IDL, and
+more at:
+
+    http://erlang.mirror.libertine.org/doc/doc-5.5.4/doc/

@@ -1,0 +1,7 @@
+PRGNAM=erlang-man
+VERSION=1.4.1
+HOMEPAGE=http://erlang.org/
+DOWNLOAD=http://erlang.mirror.libertine.org/download/otp_doc_man_R11B-4.tar.gz
+MD5SUM=cc041ceebc4a6615073d8d7e88495610  
+AUTHOR=Ismael Cortés
+EMAIL=leamsi.setroc@gmail.com

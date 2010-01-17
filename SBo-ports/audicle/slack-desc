@@ -1,0 +1,12 @@
+       |-------handy-ruler----------------------------------------------------|
+audicle: Audicle ChucK Audio Programming Language Environment
+audicle:
+audicle: The Audicle, is a duct-taped intersection of a concurrent smart
+audicle: editor, compiler, virtual machine, and debugger, all running in
+audicle: the same address space, sharing data, and working together at
+audicle: runtime. We sometimes believe this augmentation has the potential
+audicle: to fundamentally enhance the way we write and visualize audio
+audicle: programs both offline and on-the-fly. The Audicle not only provides
+audicle: an amusing class of programming tools for real-time composition and
+audicle: performances, but also motivates a new type of on-the-fly programming
+audicle: aesthetic: one of visualizing the audio programming process.

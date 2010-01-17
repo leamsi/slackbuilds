@@ -1,0 +1,1 @@
+http://easynews.dl.sourceforge.net/sourceforge/haserl/haserl-0.9.9.tar.gz

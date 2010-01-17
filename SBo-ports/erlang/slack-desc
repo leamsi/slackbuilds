@@ -1,0 +1,13 @@
+      |-----handy-ruler------------------------------------------------------|
+
+erlang: erlang Concurrent/Distributed programming language.
+erlang:
+erlang: Erlang is a  general purpose programming language  and RT enviroment.
+erlang: It  has  built-in support  for  concurrency,  distribution and  fault
+erlang: tolerance. It is used in several large telecommunication systems from
+erlang: Ericsson, and  is best suited  for distributed, reliable  and/or soft
+erlang: real-time concurrent systems.
+erlang:
+erlang: This packages includes OTP (the "standard library" of Erlang).
+erlang:
+erlang: Make sure to read www.erlang.org for more information.

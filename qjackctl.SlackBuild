@@ -1,0 +1,368 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.07 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for qjackctl (tested with version(s) 0.2.20)
+# qjackctl can be obtained at http://qjackctl.sourceforge.net/
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=qjackctl
+#This is the version number the package will receive. It is usually the application version.
+VERSION=0.3.3
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+# In the case of x86, an 486 binary can be run in any 486 and more recent
+# processors.
+ARCH=${ARCH:-i486}
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=${CPU:-i686}
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=4icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=${INSTALLPREFIX:-/usr}
+# This is the temp directory where the package will be build.
+TMP=${TMP:-/tmp}
+
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=${GZIPMAN:-1}
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=${GZIPINFO:-1}
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=${STRIPEXES:-1}
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+# The name of the source-file
+SOURCE_NAME=${APPNAME}
+# The version number of the source file.
+SOURCE_VERSION=${VERSION}
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT=.tar.gz
+# The name of the source file.
+SOURCE_FILE=${SOURCE_NAME}-${SOURCE_VERSION}${SOURCE_EXT}
+# The URL(s) of the file(s). You can specify as many files to download as you
+# want. You can even specify mirrors of the same file, as long as the filename
+# is the same. Only the first working one will be used.
+SOURCE_URL[0]=http://downloads.sourceforge.net/qjackctl/${SOURCE_FILE}
+
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES="AUTHORS COPYING LICENSE CREDITS NEWS TODO README ChangeLog FAQ LICENSE"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+PKGCONFIG=""
+
+
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+    echo "$0: The script isn't being run as root."
+    echo "$0:  No final pkg is going to be made and permissions will not be set"
+    sleep 1
+fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot access or create temporary directory ($TMP). Quitting."
+       exit 1
+   fi
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=${INSTALLPREFIX}"
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot create the build directory ($PKG). Quitting."
+       exit 1
+   fi
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot erease old contents of $PKG."
+       echo "$0:        Will continue, but build may fail."
+   fi
+fi
+
+# Download the source code if not present.
+cd $SOURCE_DIR
+echo "$0: Info: Will attempt to download ${#SOURCE_URL[*]} files."
+echo "$0: Info: If they already exist, the download will be ignored."
+for url in ${SOURCE_URL[*]} ; do
+    wget -nc -nv $url
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Error obtaining source file from url $url."
+        echo "$0:        Will continue, but build may fail."
+    fi
+done
+
+
+#Get in the build directory and untar the source file
+cd $PKG
+# Sometimes, you may need to change this command.
+tar zxf $SOURCE_DIR/$SOURCE_FILE
+
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Error obtaining source-code to build."
+    echo "$0:        Please make sure that:"
+    echo "$0:        The variable SOURCE_DIR points to wherever $SOURCE_FILE is. Or"
+    echo "$0:        The file $SOURCE_DIR/$SOURCE_FILE exists and can be read."
+    echo "$0:        That you can write to $PKG."
+    echo "$0:        That the file $SOURCE_DIR/$SOURCE_FILE is not corrupted"
+    exit 1
+fi
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Cannot access directory $PKG/$EXTRACTED_DIR."
+    echo "$0:        Make sure that the EXTRACTED_DIR variable matches the untarred directory."
+    exit 1
+fi
+
+#Configure this thing.
+# You may need to change the target string (the one which reads
+# i486-slackware-linux-gnu) if it doesn't work with your configure.
+#
+# This package doesn't respect CFLAGS nor CXXFLAGS, so we'll cheat a little to
+# make sure we produce a $ARCH binary.
+./configure $SLKCONFIG $PKGCONFIG i486-slackware-linux | tee $PKG/configure_log
+
+make | tee $PKG/make_log
+
+# Make the makefile ;)
+#make qjackctl.mak
+# Now, call the real makefile but lets cheat a little.
+#make -f qjackctl.mak CC="gcc $SLKCFLAGS $PKGCFLAGS" CXX="g++ $SLKCXXFLAGS $PKGCXXFLAGS" | tee $PKG/make_log
+#Make the fake root directory (used to store files)
+mkdir $PKG/rootdir
+#Install this ting in the fake root directory
+# Some packages use ROOT instead of DESTDIR, and a few others use something
+# else. Make sure to check that before running up to this point.
+make install DESTDIR=$PKG/rootdir | tee $PKG/install_log
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+mkdir -p $PKG/rootdir/usr/share/applications
+cat > $PKG/rootdir/usr/share/applications/qjackctl.desktop <<_EOF_
+[Desktop Entry]
+Encoding=UTF-8
+Exec=$INSTALLPREFIX/bin/qjackctl
+Icon=/usr/share/pixmaps/qjackctl.png
+Name=QJackCtl
+Name[sv]=Qjackctl
+Name[ta]=வரிசை ஜாக் கட்டுப்பாடு
+GenericName=Control for Jack
+GenericName[bg]=Управление на Jack
+GenericName[br]=Renerezh Jack
+GenericName[bs]=Kontrola za Jack
+GenericName[ca]=Control per al Jack
+GenericName[cs]=Ovládání aplikace Jack
+GenericName[cy]=Rheolydd ar gyfer Jack
+GenericName[da]=Kontrol for Jack
+GenericName[de]=Jack Kontrolle
+GenericName[el]=Έλεγχος για το Jack
+GenericName[es]=Control de Jack
+GenericName[et]=Jacki juhtimine
+GenericName[eu]=Jack-erako kontrola
+GenericName[fi]=Jackin hallinta
+GenericName[fr]=Contrôle pour Jack
+GenericName[he]=בקרה עבור Jack
+GenericName[hu]=Vezérlő a Jackhez
+GenericName[is]=Stillingar fyrir Jack
+GenericName[it]=Controllo per Jack
+GenericName[ja]=Jackのコントロール
+GenericName[km]=វត្ថុ​បញ្ជា​សម្រាប់ Jack
+GenericName[mk]=Контрола за Jack
+GenericName[nb]=Styring av Jack
+GenericName[nl]=Jack-bediening
+GenericName[nn]=Styring av Jack
+GenericName[pa]=ਜੈਕ ਲਈ ਕੰਟਰੋਲ
+GenericName[pl]=Sterowanie Jackiem
+GenericName[pt]=Controlo do Jack
+GenericName[pt_BR]=Controle para o Jack
+GenericName[ro]=Control pentru Jack
+GenericName[ru]=Управление Jack
+GenericName[sk]=Ovládanie pre Jack
+GenericName[sl]=Nadzor za Jack
+GenericName[sr]=Контрола за Jack
+GenericName[sr@Latn]=Kontrola za Jack
+GenericName[sv]=Styrning av Jack
+GenericName[ta]=ஜாக்குக்கான கட்டுப்பாடு
+GenericName[tg]=Идора барои Jack
+GenericName[tr]=Jack için Kontrol
+GenericName[uk]=Керування для Jack
+GenericName[zh_CN]=Jack 的控制
+GenericName[zh_HK]=用於 Jack 的控制器
+Type=Application
+Categories=Qt;AudioVideo;Music;X-JACK;
+_EOF_
+
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+  mkdir -p $PKG/rootdir/usr/doc
+  (cd $PKG/rootdir/usr/doc
+   ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+  )
+fi
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/man ]; then
+      gzip -9q $PKG/rootdir/$INSTALLPREFIX/man/*/*
+   fi
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/share/man ]; then
+       gzip -9q $PKG/rootdir/$INSTALLPREFIX/share/man/*/*
+   fi
+fi
+if [ -d $PKG/rootdir/$INSTALLPREFIX/info ]; then
+    rm -f $PKG/rootdir/$INSTALLPREFIX/info/dir
+    if [ ! "$GZIPINFO" = "0" ]; then
+       gzip -9q $PKG/rootdir/$INSTALLPREFIX/info/*
+    fi
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) A QT application to control JACK.
+$APPNAME: 
+$APPNAME: Qjackctl is a simple application to control the JACK audio server.
+$APPNAME: 
+$APPNAME: It provides a simple GUI for launching JACK and connecting JACK
+$APPNAME: applications with each other.
+$APPNAME: 
+_EOS_
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Cannot create install/slack-desc description file. Continuing."
+fi
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+jack
+qt
+_EOS_
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Cannot create install/slack-required dependency file. Continuing."
+fi
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+if [ $UID = 0 ]; then
+    #Almost-safe default:
+    chown -R root:root *
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Cannot change owner to root:root!"
+        echo "$0:        This should never happen. But you should investigate why it happened."
+        echo "$0:        Continuing anyway."
+        sleep 1
+    fi
+else
+    echo "$0: Info: Not root. Omitting changing ownership of files"
+fi
+
+find . \( -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 -exec chmod 644 '{}' '+' \) , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 -exec chmod 755 '{}' '+' \) , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 -exec chmod 755 '{}' '+' \)
+
+#Fix some other permision problems:
+#Maybe add/remove suid bits which are necesary.
+
+#End fix of other permission problems.
+
+ 
+
+if [ $UID = 0 ]; then
+    #Here goes the package :)
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+    if [ ! $? = 0 ]; then
+        echo "$0: Fatal: Error creating the final package. Quitting"
+        exit 1
+    fi
+
+    #cleanup and we're done.
+    cd ..
+    rm -rf rootdir
+    rm -rf $EXTRACTED_DIR
+else
+    echo "$0: Info: Not root. Omitting creation of package $APPNAME-$VERSION-$ARCH-$BUILD.tgz"
+    echo "$0: Info: Not root. Omitting cleaning up of files."
+fi
+
+# vim: encoding=utf-8:fileencoding=utf-8:

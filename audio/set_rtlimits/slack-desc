@@ -1,0 +1,18 @@
+
+           |-----handy-ruler------------------------------------------------------|
+set_rlimits:
+set_rlimits:  |  set_rlimits 
+set_rlimits:  |  1.2.0       
+set_rlimits:  |  pkg'd by paul wisehart
+set_rlimits:  |  wise@lupulin.net
+set_rlimits:
+set_rlimits: set_rlimits is a small wrapper program to allow
+set_rlimits: people to take advantage of the realtime resource
+set_rlimits: limit extensions available in Linux kernels 2.6.12 and
+set_rlimits: later without having to resort to using a PAM module.
+set_rlimits: This is of particular interest for Slackware users
+set_rlimits: since Slackware doesn't use PAM, but other users
+set_rlimits: may find this program helpful as well.  In addition,
+set_rlimits: several other resource limits can be manipulated by
+set_rlimits: the program.
+set_rlimits:

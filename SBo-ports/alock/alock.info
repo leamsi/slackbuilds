@@ -1,0 +1,7 @@
+PRGNAM="alock"
+VERSION="85"
+HOMEPAGE="http://alock.googlecode.com/"
+DOWNLOAD="http://alock.googlecode.com/files/alock-svn-85.tar.bz2"
+MD5SUM="ace67948a6f0b14e13f70af9275423df"
+MAINTAINER="Ismael C"
+EMAIL="leamsi.setroc@gmail.com"

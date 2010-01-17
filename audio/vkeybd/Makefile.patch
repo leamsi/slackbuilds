@@ -1,0 +1,36 @@
+*** Makefile	2006-09-04 14:19:31.000000000 -0400
+--- Makefile.new	2006-09-04 14:20:08.000000000 -0400
+***************
+*** 8,14 ****
+  #
+  # installation directory
+  #
+! PREFIX = /usr/local
+  # binary and Tcl script are put there
+  BIN_DIR = $(PREFIX)/bin
+  # man page
+--- 8,14 ----
+  #
+  # installation directory
+  #
+! PREFIX = /usr
+  # binary and Tcl script are put there
+  BIN_DIR = $(PREFIX)/bin
+  # man page
+***************
+*** 27,33 ****
+  # device selections -- multiple avaialble
+  # to disable the device, set value 0 (do not comment out!)
+  #
+! USE_AWE = 1
+  USE_MIDI = 1
+  USE_ALSA = 1
+  USE_LADCCA = 0
+--- 27,33 ----
+  # device selections -- multiple avaialble
+  # to disable the device, set value 0 (do not comment out!)
+  #
+! USE_AWE = 0
+  USE_MIDI = 1
+  USE_ALSA = 1
+  USE_LADCCA = 0

@@ -1,0 +1,42 @@
+libsamplerate -> libsndfile*
+libsamplerate -> fftw3
+
+libsndfile -> libFLAC*
+
+aubio -> libsndfile
+aubio -> libsamplerate
+aubio -> jack*
+aubio -> alsa-lib
+aubio -> fftw3
+aubio -> LASH*
+aubio -> puredata*
+aubio -> python*
+aubio -> swig*
+
+jack -> alsa-lib
+jack -> freebob*
+
+rosegarden -> jack*
+rosegarden -> ladspa-sdk*
+rosegarden -> librdf*
+rosegarden -> alsa-lib
+rosegarden -> qt4
+rosegarden -> liblo*
+
+timidity -> alsa-lib
+timidity -> gtk+
+timidity -> jack*
+
+noteedit -> qt
+noteedit -> kde-libs
+noteedit -> alsa-lib
+noteedit -> arts
+noteedit -> tse3
+
+jack_play -> jack
+jack_play -> libsndfile
+
+tse3 -> jack
+tse3 -> alsa-lib
+tse3 -> fftw3
+tse3 -> libsndfile

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+APPNAME="openproj"
+VERSION="1.0"
+
+SOURCE="$APPNAME-$VERSION.tar.gz"
+
+rm -rf /tmp/$APPNAME
+
+mkdir -p /tmp/$APPNAME
+tar -C /tmp/$APPNAME -zxf $SOURCE
+
+
+mkdir -p /tmp/$APPNAME/root/opt/openproj
+mkdir -p /tmp/$APPNAME/root/usr/bin
+
+cat > /tmp/$APPNAME/root/usr/bin/openproj <<_EOF_
+#!/bin/sh
+
+cd /opt/openproj
+. ./openproj.sh
+_EOF_
+
+chmod 755 /tmp/$APPNAME/root/usr/bin/openproj
+
+mv /tmp/$APPNAME/$APPNAME-$VERSION/* /tmp/$APPNAME/root/opt/openproj/
+
+chown -R root:root /tmp/$APPNAME/root/
+
+cd /tmp/$APPNAME/root
+/sbin/makepkg -l y -c n $APPNAME-$VERSION-noarch-2icv.tgz

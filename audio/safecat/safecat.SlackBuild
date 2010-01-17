@@ -1,0 +1,61 @@
+#!/bin/sh
+
+### NOT PROUD OF THIS ONE :)
+
+#safecat-1.13.tar.gz
+# Slackware build script for safecat 1.13
+# Written by paul wisehart wise@lupulin.net
+
+PRGNAM=safecat 
+VERSION=1.13     
+
+
+ARCH=${ARCH:-i486}
+BUILD=1pkw
+CWD=`pwd`		
+PKG=${CWD}/pkg
+
+# Set compiler flags
+if [ "$ARCH" = "i486" ]; then
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ]; then
+  SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+fi
+
+# Prepare the building and packaging environment
+rm -rf $PKG
+rm -rf $PRGNAM-$VERSION
+tar xvzf $CWD/$PRGNAM-$VERSION.tar.gz || exit 1
+tar xvf "pkg.tar"
+
+
+cd $PRGNAM-$VERSION
+
+
+### MAKE
+echo "/usr" > conf-root
+chown -R root:root .
+make it || die
+
+
+
+# Strip binaries and libraries
+( cd $PKG
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+)
+
+cp safecat maildir $PKG/usr/bin/
+
+gzip -9 safecat.1 maildir.1
+cp *.1.gz  $PKG/usr/man/man1/
+
+
+# cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
+
+# Copy the slack-desc (and doinst.sh if necessary) into ./install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+
+# Make the package
+cd $PKG
+makepkg -l y -c n $CWD/$PRGNAM-$VERSION-$ARCH-$BUILD.tgz

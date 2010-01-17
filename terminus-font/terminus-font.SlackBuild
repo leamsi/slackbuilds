@@ -1,0 +1,45 @@
+#!/bin/sh
+# Set initial variables:
+CWD=`pwd`
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+PKG=$TMP/package-terminus-font
+rm -rf $PKG
+mkdir -p $PKG
+
+VERSION=4.26
+ARCH=noarch
+BUILD=4dtz
+
+cd $TMP
+rm -rf terminus-font-$VERSION
+tar xvfz $CWD/terminus-font-$VERSION.tar.gz
+cd terminus-font-$VERSION
+chown -R root.root .
+for i in `ls $CWD/*.diff.gz 2> /dev/null` ; do zcat $i | patch -p1 ; done
+
+./configure --prefix=/usr --psfdir=/usr/share/kbd/consolefonts \
+  --x11dir=/usr/share/fonts/local
+make DESTDIR=$PKG TESTDIR= install install-uni install-ref
+
+mkdir -p $PKG/usr/doc/terminus-font-$VERSION
+cp -a README* $PKG/usr/doc/terminus-font-$VERSION
+
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+cat > $PKG/install/doinst.sh <<EOT
+	mkfontdir usr/share/fonts/local
+	touch usr/share/fonts/local
+	fc-cache usr/share/fonts/local
+EOT
+
+# Build the package:
+cd $PKG
+/sbin/makepkg -l y -c n $TMP/terminus-font-$VERSION-$ARCH-$BUILD.tgz
+
+# Clean up the extra stuff:
+if [ "$1" = "--cleanup" ]; then
+  rm -rf $TMP/terminus-font-$VERSION
+  rm -rf $PKG
+fi

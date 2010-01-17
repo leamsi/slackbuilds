@@ -1,0 +1,105 @@
+#!/bin/sh
+
+# Slackware build script for alock (http://alock.googlecode.com)
+
+# Written by Ismael C. (leamsi.setroc@gmail.com)
+
+# This file is given to the comunity by the author as public domain. Feel free
+# to do anything with it.
+
+
+PRGNAM=alock
+VERSION=${VERSION:-85}
+ARCH=${ARCH:-i486}
+BUILD=${BUILD:-1}
+TAG=${TAG:-_SBo}
+
+CWD=$(pwd)
+TMP=${TMP:-/tmp/SBo}
+PKG=$TMP/package-$PRGNAM
+OUTPUT=${OUTPUT:-/tmp}
+
+# Enabling IMLIB2 gives you some goodies:
+#  * Supports more images formats for the cursor, including common ones as
+#  PNG.
+#  * Supports setting an image as screen blank background.
+# I do recomend enabling it (set it to something else than "NO").
+WITH_IMLIB2=${WITH_IMLIB2:-YES}
+
+
+if [ "$ARCH" = "i486" ]; then
+  SLKCFLAGS="-O2 -march=i486 -mtune=i686"
+elif [ "$ARCH" = "i686" ]; then
+  SLKCFLAGS="-O2 -march=i686 -mtune=i686"
+elif [ "$ARCH" = "x86_64" ]; then
+  SLKCFLAGS="-O2 -fPIC"
+fi
+
+
+# Exit on rc != 0.
+set -e
+
+rm -rf $PKG
+mkdir -p $TMP $PKG $OUTPUT
+cd $TMP
+rm -rf $PRGNAM-$VERSION
+tar jxvf $CWD/$PRGNAM-svn-$VERSION.tar.bz2
+cd $PRGNAM-svn-$VERSION
+
+if [ ! "$WITH_IMLIB2" = "NO" ]; then
+    IMLIB2_FLAG="--with-imlib2"
+else
+    IMLIB2_FLAG="--without-imlib2"
+fi
+
+CFLAGS="$SLKCFLAGS" \
+CXXFLAGS="$SLKCFLAGS" \
+./configure \
+  $IMLIB2_FLAG \
+  --with-xpm \
+  --with-xcursor \
+  --with-xrender \
+  --with-passwd \
+  --with-hash \
+  --prefix=/usr \
+  --sysconfdir=/etc \
+  --localstatedir=/var \
+  --mandir=/usr/man
+
+# It's necesary to set prefix here as configure doesn't quite work.
+make prefix=/usr
+make install DESTDIR=$PKG prefix=/usr
+
+# "make install" messes with permissions. Let's fix that to Slackware's standard.
+chown -R root:root $PKG|| (echo "REMOVEME!"; true)
+find $PKG \
+ \( -perm 777 -o -perm 775 -o -perm 711 -o -perm 555 -o -perm 511 \) \
+ -exec chmod 755 {} '+' ,\
+ \( -perm 666 -o -perm 664 -o -perm 600 -o -perm 444 -o -perm 440 -o -perm 400 \) \
+ -exec chmod 644 {} '+'
+
+# Strip binaries and libraries
+( cd $PKG
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+)
+
+# Compress man pages
+( cd $PKG/usr/man
+  find . -type f -exec gzip -9 {} \;
+  for i in $( find . -type l ) ; do ln -s $( readlink $i ).gz $i.gz ; rm $i ; done
+)
+
+# Move documentation where it belongs.
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
+mv $PKG/usr/share/alock/{README.txt,CHANGELOG.txt,LICENSE.txt} $PKG/usr/doc/$PRGNAM-$VERSION
+cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
+
+# Copy the slack-desc into ./install
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+
+cd $PKG
+/sbin/makepkg -l y -c n $OUTPUT/$PRGNAM-$VERSION-$ARCH-$BUILD$TAG.tgz
+
+

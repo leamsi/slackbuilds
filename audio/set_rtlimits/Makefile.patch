@@ -1,0 +1,21 @@
+*** Makefile	2006-08-12 13:48:26.000000000 -0400
+--- Makefile.new	2006-08-12 13:50:11.000000000 -0400
+***************
+*** 3,10 ****
+  
+  # Installation locations.  If SYSCONFDIR is changed, the CONFIG_FILE define
+  # in set_rtlimits.c will need changing to match.
+! PREFIX=/usr/local
+! SYSCONFDIR=/etc
+  
+  all:	set_rlimits
+  
+--- 3,10 ----
+  
+  # Installation locations.  If SYSCONFDIR is changed, the CONFIG_FILE define
+  # in set_rtlimits.c will need changing to match.
+! PREFIX=/tmp/pkgs/pkg-set_rlimits/usr
+! SYSCONFDIR=/tmp/pkgs/pkg-set_rlimits/etc
+  
+  all:	set_rlimits
+  

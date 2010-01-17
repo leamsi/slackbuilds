@@ -1,0 +1,425 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.25 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for APP (tested with version(s) x)
+# It can be obtained at URL
+#
+
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=APP
+#This is the version number the package will receive. It is usually the application version.
+VERSION=x
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+# In the case of x86, an 486 binary can be run in any 486 and more recent
+# processors.
+ARCH=${ARCH:-i486}
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=${CPU:-i686}
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+# You can also change the build string to identify the author/distro/... of the
+# package.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=${INSTALLPREFIX:-/usr}
+# This is the temp directory where the package will be build.
+TMP=${TMP:-/tmp}
+
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=${GZIPMAN:-1}
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=${GZIPINFO:-1}
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=${STRIPEXES:-1}
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+# The name of the source-file
+SOURCE_NAME=${APPNAME}
+# The version number of the source file.
+SOURCE_VERSION=${VERSION}
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT=.tar.gz
+# The name of the source file.
+SOURCE_FILE=${SOURCE_NAME}-${SOURCE_VERSION}${SOURCE_EXT}
+# The URL(s) of the file(s). You can specify as many files to download as you
+# want. You can even specify mirrors of the same file, as long as the filename
+# is the same. Only the first working one will be used.
+SOURCE_URL[0]=http://example.net/path/$SOURCE_FILE
+
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES="AUTHORS COPYING LICENSE CREDITS NEWS TODO README ChangeLog FAQ LICENSE"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+PKGCONFIG=""
+
+
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+# Fake root directory.
+ROOTDIR=$PKG/rootdir
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+    echo "$0: Info: The script isn't being run as root."
+    echo "$0: Info: No final pkg is going to be made and permissions will not be set."
+    sleep 1
+fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot access or create temporary directory ($TMP). Quitting."
+       exit 1
+   fi
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O2 -march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=${INSTALLPREFIX}"
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: Fatal: PKG directory is root! ($PKG)"
+  exit 1
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot create the build directory ($PKG). Quitting."
+       exit 1
+   fi
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+   if [ ! $? = 0 ]; then
+       echo "$0: Error: Cannot erease old contents of $PKG."
+       echo "$0:        Will continue, but build may fail."
+   fi
+fi
+
+# Download the source code if not present.
+cd $SOURCE_DIR
+echo "$0: Info: Will attempt to download ${#SOURCE_URL[*]} files."
+echo "$0: Info: If they already exist, no download will be made."
+for url in ${SOURCE_URL[*]} ; do
+    wget -nc  $url
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Error obtaining source file from url $url."
+        echo "$0:        Will continue, but build may fail."
+    fi
+done
+
+extract () {
+    case "$1" in
+        *.tar)
+        tar xf $1
+        return $?
+        ;;
+        *.tar.gz|*.tgz)
+        tar zxf $1
+        return $?
+        ;;
+        *.tar.bz2|*.tbz|*.tbz2)
+        tar jxf $1
+        return $?
+        ;;
+        *.zip)
+        unzip $1
+        return $?
+        ;;
+        *.rar)
+        unrar x $1
+        return $?
+        ;;
+        *)
+        echo "$0: Error: Unknow file suffix for $1."
+        echo "$0: Error: Will try with tar zxf, but it may not work."
+        tar zxf $1
+        return $?
+        ;;
+    esac
+}
+
+#Get in the build directory and untar the source file
+cd $PKG
+# Sometimes, you may need to change this command.
+extract $SOURCE_DIR/$SOURCE_FILE
+
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Error obtaining source-code to build."
+    echo "$0:        Please make sure that:"
+    echo "$0:        The variable SOURCE_DIR points to wherever $SOURCE_FILE is. Or"
+    echo "$0:        The file $SOURCE_DIR/$SOURCE_FILE exists and can be read."
+    echo "$0:        That you can write to $PKG."
+    echo "$0:        That the file $SOURCE_DIR/$SOURCE_FILE is not corrupted"
+    exit 1
+fi
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Cannot access directory $PKG/$EXTRACTED_DIR."
+    echo "$0:        Make sure that the EXTRACTED_DIR variable matches the untarred directory."
+    exit 1
+fi
+
+#Configure this thing.
+# You may need to change the target string (the one which reads
+# i486-slackware-linux-gnu) if it doesn't work with your configure.
+./configure $SLKCONFIG $PKGCONFIG CFLAGS="$SLKCFLAGS $PKGCFLAGS" CXXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS"  i486-slackware-linux | tee $PKG/configure_log
+if [ ! ${PIPESTATUS[0]} = 0 ]; then
+    echo "$0: Error: Error running configure. Please check the $PKG/configure_log file. Quitting."
+    exit 1
+fi
+#Make this thing.
+make | tee $PKG/make_log
+if [ ! ${PIPESTATUS[0]} = 0 ]; then
+    echo "$0: Error: Error while make-ing (Most likely a compiler error). Please check the $PKG/make_log file. Quitting."
+    exit 1
+fi
+#Make the fake root directory (used to store files)
+mkdir $ROOTDIR
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Cannot create fake root directory ($ROOTDIR)."
+    exit 1
+fi
+#Install this ting in the fake root directory
+# Some packages use ROOT instead of DESTDIR, and a few others use something
+# else. Make sure to check that before running up to this point.
+make install DESTDIR=$ROOTDIR | tee $PKG/install_log
+if [ ! ${PIPESTATUS[0]} = 0 ]; then
+    echo "$0: Error: Error while running the fake install. Please check the $PKG/install_log file. Quitting."
+    exit 1
+fi
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $ROOTDIR/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $ROOTDIR/usr/doc/$APPNAME-$VERSION
+           if [ ! $? = 0 ]; then
+               echo "$0: Error: Error while creating documentation directory!"
+               echo "$0:        This should never happen, and package building will continue anyway."
+               echo "$0:        You should check why this happened."
+               sleep 1
+           fi
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $ROOTDIR/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $ROOTDIR/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+  chmod -R go-w $ROOTDIR/usr/doc/$APPNAME-$VERSION
+else
+    mkdir -p $ROOTDIR/usr/doc
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Error while creating documentation directory!"
+        echo "$0:        This should never happen, and building will continue anyway."
+        echo "$0:        You should check why this happened."
+        sleep 1
+    fi
+    (cd $ROOTDIR/usr/doc
+    ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+    )
+fi
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $ROOTDIR$INSTALLPREFIX/man ]; then
+      gzip -9r $ROOTDIR$INSTALLPREFIX/man/
+      if [ ! $? = 0 ]; then
+          echo "$0: Error: Cannot gzip man pages under $ROOTDIR$INSTALLPREFIX/man. Continuing"
+      fi
+      find $ROOTDIR$INSTALLPREFIX/man -type l | while read link ; do
+          target=$(readlink $link)
+          rm -f $link
+          ln -s ${target/"$ROOTDIR"/}.gz $link
+      done
+   fi
+   if [ -d $ROOTDIR$INSTALLPREFIX/share/man ]; then
+      gzip -9r $ROOTDIR$INSTALLPREFIX/share/man/
+      if [ ! $? = 0 ]; then
+          echo "$0: Error: Cannot gzip man pages under $ROOTDIR$INSTALLPREFIX/share/man. Continuing"
+      fi
+      find $ROOTDIR$INSTALLPREFIX/man -type l | while read link ; do
+          target=$(readlink $link)
+          rm -f $link
+          ln -s ${target/"$ROOTDIR"/}.gz $link
+      done
+   fi
+fi
+
+if [ -d $ROOTDIR$INSTALLPREFIX/info ]; then
+    rm -f $ROOTDIR$INSTALLPREFIX/info/dir
+    if [ ! "$GZIPINFO" = "0" ]; then
+        gzip -9 $ROOTDIR$INSTALLPREFIX/info/*
+        if [ ! $? = 0 ]; then
+           echo "$0: Error: Cannot gzip info pages under $ROOTDIR$INSTALLPREFIX/info. Continuing"
+        fi
+    fi
+fi
+
+cd $ROOTDIR
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . -type f | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . -type f | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . -type f | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) small description.
+$APPNAME: 
+$APPNAME: long description.
+$APPNAME: 
+$APPNAME: 
+$APPNAME: 
+$APPNAME: 
+$APPNAME: 
+$APPNAME:
+$APPNAME: 
+$APPNAME: 
+_EOS_
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Cannot create install/slack-desc description file. Continuing."
+fi
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+_EOS_
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Cannot create install/slack-required dependency file. Continuing."
+fi
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/$APPNAME-$VERSION-$BUILD
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$BUILD/SlackBuild
+if [ ! $? = 0 ]; then
+    echo "$0: Error: Cannot create a copy of this SlackBuild. Continuing."
+fi
+
+
+if [ $UID = 0 ]; then
+    #Almost-safe default:
+    chown -R root:root *
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Cannot change owner to root:root!"
+        echo "$0:        This should never happen. But you should investigate why it happened."
+        echo "$0:        Continuing anyway."
+        sleep 1
+    fi
+else
+    echo "$0: Info: Not root. Omitting changing ownership of files"
+fi
+
+
+
+# Fix some non slackware-standard permissions.
+# Note that neither 660 nor 770 will be fixed.
+find . \(   -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 \) -type f -exec chmod 644 '{}' '+' , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 \) -type f  -exec chmod 755 '{}' '+' , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 \)  -type f -exec chmod 755 '{}' '+'
+
+# A rather interesting warning.
+checkstack ()
+{
+    for E in $@ ; do
+        if readelf -l $E | grep GNU_STACK | grep -q " [R ][W ]X " ; then
+            echo "$0: Warning: Executable file $E has the stack executable."
+            echo "$0:          Sometimes this is desirable, but it can also be a sign of a"
+            echo "$0:          possible stack-overflow based attack."
+            sleep 1
+        fi
+    done
+}
+find . -type f -print | xargs file | grep ELF | cut -f 1 -d : | while read file ; do
+    checkstack "$file"
+done
+
+# Safety net
+chmod 755 .
+[ -e root/ ] && chmod 700 root/
+[ -e bin/ ] && chmod 755 bin/
+[ -e sbin/ ] && chmod 755 sbin/
+[ -e usr/ ] && chmod 755 usr/
+[ -e home/ ] && chmod 755 home/ && chmod 700 home/*
+[ -e etc/ ] && chmod 755 etc/
+[ -e lib/ ] && chmod 755 lib/
+[ -e tmp/ ] && chmod 1777 tmp/
+
+#Fix some other permision problems:
+#Maybe add/remove suid bits which are necesary, or set the owner/group of certain folders
+
+#End fix of other permission problems.
+
+ 
+
+if [ $UID = 0 ]; then
+    #Here goes the package :)
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+    if [ ! $? = 0 ]; then
+        echo "$0: Fatal: Error creating the final package. Quitting"
+        exit 1
+    fi
+
+    #cleanup and we're done.
+    cd $PKG
+    rm -rf rootdir
+    rm -rf $EXTRACTED_DIR
+else
+    echo "$0: Info: Not root. Omitting creation of package $APPNAME-$VERSION-$ARCH-$BUILD.tgz"
+    echo "$0: Info: Not root. Omitting cleaning up of files."
+fi
+
+exit 0

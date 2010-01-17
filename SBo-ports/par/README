@@ -1,0 +1,31 @@
+par, the Paragraph Formatter
+
+par is  an extremely well-written  and intelligent paragraph  formatter vaguely
+similar to "fmt". It makes it  easy to write enviably well-formatted plain text
+e-mails and is also helpful with source  code. Some ways in which par surpasses
+other paragraph formatters:
+
+    * par preserves prefixes and suffixes on each line. This means that it adds
+    the infamous > marks to e-mails when  necessary as it breaks lines. It also
+    preserves suffixes, which is invaluable when  you have text surrounded by a
+    "box" of characters.
+
+    * par uses a  dynamic programming algorithm to find an  optimal set of line
+    breaks. Most  other formatters, like  the Unix  standard fmt, use  a greedy
+    algorithm that tends to generate more ragged right edges of formatted text.
+
+    * par  can  fully  justify   text   rather  than  simple  left-  or  right-
+    justification.
+
+    * par is quite  flexible and has a host of  command-line options that allow
+    you to make it do just about anything you'd like.
+
+(Above text was pretty much copied-pasted from  http://jmcpherson.org/par.html)
+
+It's main disadvantage, however, is that  the documentation is written in a way
+which forces you to understand the way  it behaves, rather than the way you use
+it.
+
+Note:   This  package  has  nothing  to  with  the  .PAR  file  found  in  some
+Usenet/torrent  archives (you  want par2cmdline  for that),  nor the  Perl
+Archiving toolkit.

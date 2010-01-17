@@ -1,0 +1,132 @@
+#! /bin/bash
+
+#BUILD SCRIPT FOR FIGLET (TESTED WITH VERSION 2.2.2)
+# FIGlet can be obtained from http://www.figlet.org
+APPNAME=figlet
+VERSION=2.2.2
+ARCH=i486
+CPU=i686
+BUILD=2icv
+TMP=/tmp
+#This means that "make install" auto copies the doc files (README, INSTALL, etc) in a directory
+# instead of copying or moving those files, this script will create a link in /usr/doc/appname-version
+#which points to the right place.
+#AUTODOCDIR=
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O2 -march=$ARCH -mcpu=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+
+#PACKAGE SPECIFIC FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#Where the source file is located
+SOURCE_DIR=$(pwd)
+SOURCE_FILE=figlet222.tar.gz
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   rm -rf $PKG/*
+fi
+
+cd $PKG
+tar zxf $SOURCE_DIR/$SOURCE_FILE
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $(basename $SOURCE_FILE .tar.gz)
+
+#./configure --prefix=/usr CFLAGS="$SLKCFLAGS $PKGCFLAGS" CXXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS" 
+make CFLAGS="$SLKCFLAGS $PKGCFLAGS" DESTDIR=/usr/games MANDIR=/usr/man/man6 DEFAULTFONTDIR=/usr/share/games/figlet
+
+mkdir $PKG/rootdir
+mkdir -p $PKG/rootdir/usr/games
+mkdir -p $PKG/rootdir/usr/man/man6
+mkdir -p $PKG/rootdir/usr/share/games/figlet
+
+make install DESTDIR=$PKG/rootdir/usr/games MANDIR=$PKG/rootdir/usr/man/man6 DEFAULTFONTDIR=$PKG/rootdir/usr/share/games/figlet
+
+#Package specific things follow:
+chmod a+x $PKG/rootdir/usr/games/*
+#END of package specific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+ mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+ cp -f README FAQ figfont.txt CHANGES figmagic $PKG/rootdir/usr/doc/$APPNAME-$VERSION
+else
+ mkdir -p $PKG/rootdir/usr/doc
+ (cd $PKG/rootdir/usr/doc
+  ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+ )
+fi
+
+#gzip man and info pages
+gzip -9 $PKG/rootdir/usr/man/man?/*.?
+rm -f $PKG/rootdir/usr/info/dir
+gzip -9 $PKG/rootdir/usr/info/*
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+(
+  find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+  find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+)
+
+ 
+#Almost-safe default:
+chown -R root:root *
+if [ -d usr/bin ]; then
+   chown -R root:bin usr/bin
+fi
+if [ -d bin ]; then
+   chown -R root:bin bin
+fi
+find . -perm 775 -exec chmod 755 {} \;
+find . -perm 777 -exec chmod 755 {} \;
+find . -perm 511 -exec chmod 755 {} \;
+find . -perm 711 -exec chmod 755 {} \;
+find . -perm 555 -exec chmod 755 {} \;
+find . -perm 664 -exec chmod 644 {} \;
+find . -perm 444 -exec chmod 644 {} \;
+find . -perm 600 -exec chmod 644 {} \;
+find . -perm 400 -exec chmod 644 {} \;
+find . -perm 440 -exec chmod 644 {} \;
+
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) is a program for making big letters
+$APPNAME: 
+$APPNAME:  _____ ___ ____ _      _  
+$APPNAME: |  ___|_ _/ ___| | ___| |_ 
+$APPNAME: | |_   | | |  _| |/ _ \ __|
+$APPNAME: |  _|  | | |_| | |  __/ |_ 
+$APPNAME: |_|   |___\____|_|\___|\__|
+$APPNAME: 
+$APPNAME: Like a banner, but it fits in you signature!
+$APPNAME:
+$APPNAME: Created by Ismael C. the day $(date +%d-%b-%Y)
+_EOS_
+ 
+#Here goes the package :)
+/sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+
+#cleanup and we're done.
+cd ..
+rm -rf rootdir
+rm -rf $(basename $SOURCE_FILE .tar.gz) 

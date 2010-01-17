@@ -1,0 +1,330 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.07 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for set_rlimits (tested with version(s) 1.2.0)
+# set_rlimits can be obtained at http://www.physics.adelaide.edu.au/~jwoithe/
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=set_rlimits
+#This is the version number the package will receive. It is usually the application version.
+VERSION=1.3.0
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+# In the case of x86, an 486 binary can be run in any 486 and more recent
+# processors.
+ARCH=${ARCH:-i486}
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=${CPU:-i686}
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=/usr
+# This is the temp directory where the package will be build.
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=${GZIPMAN:-1}
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=${GZIPINFO:-1}
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=${STRIPEXES:-1}
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+# The name of the source-file
+SOURCE_NAME=${APPNAME}
+# The version number of the source file.
+SOURCE_VERSION=${VERSION}
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT=.tgz
+# The name of the source file.
+SOURCE_FILE=${SOURCE_NAME}-${SOURCE_VERSION}${SOURCE_EXT}
+# URL
+SOURCE_URL[0]=http://www.physics.adelaide.edu.au/~jwoithe/$SOURCE_FILE
+
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR=$(basename $SOURCE_FILE $SOURCE_EXT)
+
+#This means that "make install" auto copies the doc files (README, INSTALL,
+# etc) in some directory,
+# Instead of copying or moving those files, this script will create a link in
+# /usr/doc/appname-version which points to the right place.
+# It is relative to the installed ROOT directory.
+#AUTODOCDIR=usr/share/$APPNAME/doc
+
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES="AUTHORS COPYING LICENSE CREDITS NEWS TODO README ChangeLog FAQ LICENSE"
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+PKGCFLAGS=
+PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+PKGCONFIG=""
+
+
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+# Fake root directory.
+ROOTDIR=$PKG/rootdir
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+    echo "$0: The script isn't being run as root."
+    echo "$0:  No final pkg is going to be made and permissions will not be set"
+    sleep 1
+fi
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+SLKCFLAGS="-O1 -march=$ARCH -mtune=$CPU"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=${INSTALLPREFIX}"
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+fi
+
+# Download the source code if not present.
+cd $SOURCE_DIR
+echo "$0: Info: Will attempt to download ${#SOURCE_URL[*]} files."
+echo "$0: Info: If they already exist, no download will be made."
+for url in ${SOURCE_URL[*]} ; do
+    wget -nc  $url
+    if [ ! $? = 0 ]; then
+        echo "$0: Error: Error obtaining source file from url $url."
+        echo "$0:        Will continue, but build may fail."
+    fi
+done
+
+extract () {
+    case "$1" in
+        *.tar)
+        tar xf $1
+        return $?
+        ;;
+        *.tar.gz|*.tgz)
+        tar zxf $1
+        return $?
+        ;;
+        *.tar.bz2|*.tbz|*.tbz2)
+        tar jxf $1
+        return $?
+        ;;
+        *.zip)
+        unzip $1
+        return $?
+        ;;
+        *.rar)
+        unrar $1
+        return $?
+        ;;
+        *)
+        echo "$0: Error: Unknow file suffix for $1."
+        echo "$0: Error: Will try with tar zxf, but it may not work."
+        tar zxf $1
+        return $?
+        ;;
+    esac
+}
+
+#Get in the build directory and untar the source file
+cd $PKG
+# Sometimes, you may need to change this command.
+extract $SOURCE_DIR/$SOURCE_FILE
+
+if [ ! $? = 0 ]; then
+    echo "$0: Fatal: Error obtaining source-code to build."
+    echo "$0:        Please make sure that:"
+    echo "$0:        The variable SOURCE_DIR points to wherever $SOURCE_FILE is. Or"
+    echo "$0:        The file $SOURCE_DIR/$SOURCE_FILE exists and can be read."
+    echo "$0:        That you can write to $PKG."
+    echo "$0:        That the file $SOURCE_DIR/$SOURCE_FILE is not corrupted"
+    exit 1
+fi
+
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+cd $EXTRACTED_DIR
+
+#Configure this thing.
+# You may need to change the target string (the one which reads
+# i486-slackware-linux-gnu) if it doesn't work with your configure.
+#./configure $SLKCONFIG $PKGCONFIG CFLAGS="$SLKCFLAGS $PKGCFLAGS" CXXFLAGS="$SLKCXXFLAGS $PKGCXXFLAGS"  i486-slackware-linux | tee $PKG/configure_log
+#Make this thing.
+#make | tee $PKG/make_log
+gcc  -Wall -g $SLKCFLAGS $PKGCFLAGS -o set_rlimits set_rlimits.c
+
+#Make the fake root directory (used to store files)
+mkdir $ROOTDIR
+#Install this ting in the fake root directory
+# Some packages use ROOT instead of DESTDIR, and a few others use something
+# else. Make sure to check that before running up to this point.
+mkdir -p $ROOTDIR/$INSTALLPREFIX/bin
+mkdir -p $ROOTDIR/$INSTALLPREFIX/man/man8
+mkdir -p $ROOTDIR/etc
+cp -p set_rlimits $ROOTDIR/$INSTALLPREFIX/bin/
+chmod u+s $ROOTDIR/$INSTALLPREFIX/bin/set_rlimits
+cp set_rlimits.conf $ROOTDIR/etc/
+cp -p set_rlimits.8 $ROOTDIR/$INSTALLPREFIX/man/man8/
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+
+## We'll add some nice defaults:
+cat >> $ROOTDIR/etc/set_rlimits.conf <<_EOF_
+# The format is documented in the set_rlimits man page.
+#
+# Some preconfigured resource limits:
+#80 should suffice for jack. Also, 80Mb should be enough for JACK.
+@audio /usr/bin/jackd nice=-1 rtprio=90 memlock=81920
+# Less than jackd, since it will probably be running at
+# the same time than jackd.
+@audio /usr/bin/qjackctl nice=-1 rtprio=20
+# Now, muse is a b***h which seems to need all the priority possible to run.
+@audio /usr/bin/muse nice=-1 rtprio=79
+# Rosegarden doesn't seem to need that much, but having some extra rtprio should
+# reduce latency.
+@audio /usr/bin/rosegarden nice=-1 rtprio=78
+# This seems to be needed to run properly ZynAddSubFX with JACK in runetime.
+@audio /usr/bin/zynaddsubfx nice=-1 rtprio=78 memlock=8192
+# Meter bridge needs more memlock than it seems. If X lacks acceleration, you
+# are better not using anything other than the DPM.
+@audio /usr/bin/meterbridge nice=-1 rtprio=40 memlock=16384
+_EOF_
+
+#END of package especific things.
+
+#copy doc files
+if [ "$AUTODOCDIR" = "" ]; then
+  for i in $DOCFILES; do
+     if [ -e $i ]; then
+        if [ ! -d $ROOTDIR/usr/doc/$APPNAME-$VERSION ]; then
+           mkdir -p $ROOTDIR/usr/doc/$APPNAME-$VERSION
+        fi
+        if [ -L $i -o -d $i ]; then
+           cp -LR $i $ROOTDIR/usr/doc/$APPNAME-$VERSION
+        else
+           cp $i $ROOTDIR/usr/doc/$APPNAME-$VERSION
+        fi
+     fi
+  done
+else
+  mkdir -p $ROOTDIR/usr/doc
+  (cd $ROOTDIR/usr/doc
+   ln -sf ../../$AUTODOCDIR $APPNAME-$VERSION
+  )
+fi
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $ROOTDIR/$INSTALLPREFIX/man ]; then
+      gzip -9q $ROOTDIR/$INSTALLPREFIX/man/*/*
+   fi
+   if [ -d $ROOTDIR/$INSTALLPREFIX/share/man ]; then
+       gzip -9q $ROOTDIR/$INSTALLPREFIX/share/man/*/*
+   fi
+fi
+if [ -d $ROOTDIR/$INSTALLPREFIX/info ]; then
+    rm -f $ROOTDIR/$INSTALLPREFIX/info/dir
+    if [ ! "$GZIPINFO" = "0" ]; then
+       gzip -9q $ROOTDIR/$INSTALLPREFIX/info/*
+    fi
+fi
+
+cd $ROOTDIR
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) Enable resource limits on Linux 2.6.12+
+$APPNAME: 
+$APPNAME: It is a small program written to give unpriviledged users access to 
+$APPNAME:  realtime scheduling via the new rlimits added to kernel 2.6.12. The 
+$APPNAME:  new name reflects the fact that the program can control resource 
+$APPNAME:  limits rather than just those related to realtime priorities.
+$APPNAME: 
+$APPNAME: It is specially usefull to do things in non-PAM enabled linux systems
+$APPNAME: (like Slackware) which are usually done with pam_limits. You may want
+$APPNAME: to try this if you are running JACK as a non-root user.
+_EOS_
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+_EOS_
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+if [ $UID = 0 ]; then
+    #Almost-safe default:
+    chown -R root:root *
+fi
+
+find . \( -perm 400 -or -perm 440 -or -perm 444 -or -perm 600 -or -perm 664 -or -perm 666 \) -exec chmod 644 '{}' '+' , \
+\( -perm 511 -or -perm 551 -or -perm 555 -or -perm 711 -or -perm 751 -or -perm 775 -or -perm 777 \) -exec chmod 755 '{}' '+' , \
+\( -perm 2511 -or -perm 2551 -or -perm 2555 -or -perm 2711 -or -perm 2751 -or -perm 2755 -or -perm 2775 -or -perm 2777 \) -exec chmod 755 '{}' '+'
+#Fix some other permision problems:
+#Maybe add/remove suid bits which are necesary.
+
+#Make sure that the app. is setuid.
+chmod u+s .$INSTALLPREFIX/bin/set_rlimits
+
+#End fix of other permission problems.
+
+ 
+
+if [ $UID = 0 ]; then
+    #Here goes the package :)
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+
+    #cleanup and we're done.
+    cd ..
+    rm -rf rootdir
+    rm -rf $EXTRACTED_DIR
+fi

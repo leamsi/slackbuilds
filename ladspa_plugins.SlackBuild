@@ -1,0 +1,1170 @@
+#! /bin/bash
+# This is based on generic.SlackBuild version 1.07 by Ismael Cortes.
+# I explicitly renunce to all copyrights and responsabilities of this file, so feel free to do
+# anything you want to with it.
+# NOTE: You should check all the script, and you'll most likely end up changing
+# something down below.
+
+#Build Script for ladspa-plugins (tested with version(s) 1)
+# This includes the following plugins:
+#  Steve Harris's can be obtained at http://plugin.org.uk/releases/
+#  CMT can be obtained at http://www.ladspa.org/download/
+#  TAP-plugins can be obtained at http://tap-plugins.sourceforge.net/
+#  CAPS audio plugins can be get at http://quitte.de/dsp/caps.html
+#  VLevel plugin can be get at http://vlevel.sourceforge.net/installing/
+#  NJL plugins can be obtained at
+#   http://www.ecs.soton.ac.uk/~njl98r/code/ladspa/njl-plugins/
+#   (NOTE: There's a chance that he's going to move all his site to somewhere
+#   else).
+#  WASP plugins can be obtained at
+#   http://sineshine.com/creations/software/ (NOTE: This script supports
+#   installing the -doc package, if found)
+#  BLOP can be get at http://blop.sourceforge.net/download.html
+#  VFC plugins can be get at http://www.suse.de/~mana/ladspa.html
+#  Omins Plugins can be obtained at http://www.nongnu.org/om-synth/omins.html
+#  AMB, MCP, REV, VCO and FIL plugins are hosted at
+#   http://users.skynet.be/solaris/linuxaudio/getit.html
+#
+# UPDATE: this script will now download the required sources!
+#
+# CWD holds the current directory. Lots of things will be relative to it.
+CWD=$(pwd)
+#This is the name the package will receive. It is usually the application name.
+APPNAME=ladspa-plugins
+#This is the version number the package will receive. It is usually the application version.
+VERSION=7
+#The target architecture. Slackware uses 486 for most of its packages, and that's a
+# recommended setting in linuxpackages.net
+# In the case of x86, an 486 binary can be run in any 486 and more recent
+# processors.
+ARCH=${ARCH:-i486}
+# This is the target CPU wich is expected to run the binary. It is used by the
+# compiler to optimize stuff.
+CPU=${CPU:-i686}
+# The build number. Increment this if you repackage, but the version number
+# hasn't changed.
+BUILD=1icv
+# Where to install stuff. Some people prefer to use /usr/local for installed
+# things.
+INSTALLPREFIX=/usr
+# This is the temp directory where the package will be build.
+if [ "$TMP" = "" ]; then
+  TMP=/tmp
+fi
+
+
+# NOTE: you'll most likely want to gzip man and info pages and strip
+# executables. It is a good thing.
+# GZIP Man pages (0 is NO, anything else is yes, defaults to yes).
+GZIPMAN=${GZIPMAN:-1}
+# GZIP Info files (the same rules for GZIPMAN).
+GZIPINFO=${GZIPINFO:-1}
+#Strip executables and libraries (same rules for GZIPMAN)
+STRIPEXES=${STRIPEXES:-1}
+
+#Where the source file is located
+SOURCE_DIR=${SOURCE_DIR:-$CWD}
+
+
+# COMPUTER MUSIC TOOLKIT (LADSPA official?)
+#
+# The name of the source-file
+SOURCE_NAME[0]=cmt_src
+# The version number of the source file.
+SOURCE_VERSION[0]=1.16
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[0]=.tgz
+# The name of the source file.
+SOURCE_FILE[0]=${SOURCE_NAME[0]}_${SOURCE_VERSION[0]}${SOURCE_EXT[0]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[0]=cmt
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[0]="README doc/"
+# The URL to download this.
+SOURCE_URL[0]=http://www.ladspa.org/download/${SOURCE_FILE[0]}
+
+# Steve Harris' plugins (plugin.org.uk, I wonder if is the Iron Maiden's
+# bassist? nah...)
+#
+# The name of the source-file
+SOURCE_NAME[1]=swh-plugins
+# The version number of the source file.
+SOURCE_VERSION[1]=0.4.15
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[1]=.tar.gz
+# The name of the source file.
+SOURCE_FILE[1]=${SOURCE_NAME[1]}-${SOURCE_VERSION[1]}${SOURCE_EXT[1]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[1]=$(basename ${SOURCE_FILE[1]} ${SOURCE_EXT[1]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[1]="AUTHORS COPYING ChangeLog README NEWS TODO"
+# The URL to download this.
+SOURCE_URL[1]=http://plugin.org.uk/releases/${SOURCE_VERSION[1]}/${SOURCE_FILE[1]}
+
+# Tom's Audio Processing plugins for audio engineering on the Linux Platform.
+#
+# The name of the source-file
+SOURCE_NAME[2]=tap-plugins
+# The version number of the source file.
+SOURCE_VERSION[2]=0.7.0
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[2]=.tar.gz
+# The name of the source file.
+SOURCE_FILE[2]=${SOURCE_NAME[2]}-${SOURCE_VERSION[2]}${SOURCE_EXT[2]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[2]=$(basename ${SOURCE_FILE[2]} ${SOURCE_EXT[2]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[2]="COPYING CREDITS README"
+# The URL to download this.
+SOURCE_URL[2]=http://easynews.dl.sourceforge.net/sourceforge/tap-plugins/${SOURCE_FILE[2]}
+
+# C* Audio Plugin Suite (CAPS) plugins.
+#
+# The name of the source-file
+SOURCE_NAME[3]=caps
+# The version number of the source file.
+SOURCE_VERSION[3]=0.4.2
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[3]=.tar.gz
+# The name of the source file.
+SOURCE_FILE[3]=${SOURCE_NAME[3]}_${SOURCE_VERSION[3]}${SOURCE_EXT[3]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[3]=${SOURCE_NAME[3]}-${SOURCE_VERSION[3]}
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[3]="COPYING CREDITS README README.ardour CHANGES HACKING caps.html"
+# The URL to download this.
+SOURCE_URL[3]=http://quitte.de/dsp/${SOURCE_FILE[3]}
+
+
+# VLevel: A look ahead volume leveler. Mostly useful when listening
+# non-classical music.
+#
+# The name of the source-file
+SOURCE_NAME[4]=vlevel
+# The version number of the source file.
+SOURCE_VERSION[4]=0.5
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[4]=.tar.gz
+# The name of the source file.
+SOURCE_FILE[4]=${SOURCE_NAME[4]}-${SOURCE_VERSION[4]}${SOURCE_EXT[4]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[4]=${SOURCE_NAME[4]}-${SOURCE_VERSION[4]}
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[4]="COPYING INSTALL README TODO docs/* utils/levelplay"
+# The URL to download this.
+SOURCE_URL[4]=http://superb-east.dl.sourceforge.net/sourceforge/vlevel/${SOURCE_FILE[4]}
+
+# Nick Lamb's NJL Plugins
+#
+# The name of the source-file
+SOURCE_NAME[5]=njl-plugins
+# The version number of the source file.
+SOURCE_VERSION[5]=0.2.1
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[5]=.tar.gz
+# The name of the source file.
+SOURCE_FILE[5]=${SOURCE_NAME[5]}-${SOURCE_VERSION[5]}${SOURCE_EXT[5]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[5]=${SOURCE_NAME[5]}
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[5]="README PLUGINS COPYING"
+# The URL to download this.
+SOURCE_URL[5]=http://www.ecs.soton.ac.uk/~njl98r/code/ladspa/njl-plugins/${SOURCE_FILE[5]}
+
+# Bandlimited LADSAP Oscillator Plugins (BLOP)
+#
+# The name of the source-file
+SOURCE_NAME[6]=blop
+# The version number of the source file.
+SOURCE_VERSION[6]=0.2.8
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[6]=.tar.gz
+# The name of the source file.
+SOURCE_FILE[6]=${SOURCE_NAME[6]}-${SOURCE_VERSION[6]}${SOURCE_EXT[6]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[6]=$(basename ${SOURCE_FILE[6]} ${SOURCE_EXT[6]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[6]="AUTHORS COPYING ChangeLog NEWS TODO THANKS doc/{about.txt,plugins_list.txt}"
+# The URL to download this.
+SOURCE_URL[6]=http://superb-east.dl.sourceforge.net/sourceforge/blop/${SOURCE_FILE[6]}
+
+# VCF filters
+#
+# The name of the source-file
+SOURCE_NAME[7]=vcf
+# The version number of the source file.
+SOURCE_VERSION[7]=0.0.5
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[7]=.tar.bz2
+# The name of the source file.
+SOURCE_FILE[7]=${SOURCE_NAME[7]}-${SOURCE_VERSION[7]}${SOURCE_EXT[7]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[7]=$(basename ${SOURCE_FILE[7]} ${SOURCE_EXT[7]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[7]=""
+# The URL to download this.
+SOURCE_URL[7]=http://www.suse.de/~mana/${SOURCE_FILE[7]}
+
+# Omins plugins.
+#
+# The name of the source-file
+SOURCE_NAME[8]=omins
+# The version number of the source file.
+SOURCE_VERSION[8]=0.2.0
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[8]=.tar.gz
+# The name of the source file.
+SOURCE_FILE[8]=${SOURCE_NAME[8]}-${SOURCE_VERSION[8]}${SOURCE_EXT[8]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[8]=$(basename ${SOURCE_FILE[8]} ${SOURCE_EXT[8]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[8]="README COPYING AUTHORS"
+# The URL to download this.
+SOURCE_URL[8]=http://savannah.nongnu.org/download/om-synth/${SOURCE_FILE[8]}
+
+# Ambience plugins.
+# (It is a bunch of B-space format plugins and some transformers).
+# The name of the source-file
+SOURCE_NAME[9]=AMB-plugins
+# The version number of the source file.
+SOURCE_VERSION[9]=0.4.0
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[9]=.tar.bz2
+# The name of the source file.
+SOURCE_FILE[9]=${SOURCE_NAME[9]}-${SOURCE_VERSION[9]}${SOURCE_EXT[9]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[9]=$(basename ${SOURCE_FILE[9]} ${SOURCE_EXT[9]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[9]="README COPYING AUTHORS"
+# The URL to download this.
+SOURCE_URL[9]=http://www.kokkinizita.net/linuxaudio/downloads/${SOURCE_FILE[9]}
+
+# FIL plugins.
+#
+# The name of the source-file
+SOURCE_NAME[10]=FIL-plugins
+# The version number of the source file.
+SOURCE_VERSION[10]=0.1.0
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[10]=.tar.bz2
+# The name of the source file.
+SOURCE_FILE[10]=${SOURCE_NAME[10]}-${SOURCE_VERSION[10]}${SOURCE_EXT[10]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[10]=$(basename ${SOURCE_FILE[10]} ${SOURCE_EXT[10]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[10]="README COPYING AUTHORS"
+# The URL to download this.
+SOURCE_URL[10]=http://www.kokkinizita.net/linuxaudio/downloads/${SOURCE_FILE[10]}
+
+# MCP plugins.
+#
+# The name of the source-file
+SOURCE_NAME[11]=MCP-plugins
+# The version number of the source file.
+SOURCE_VERSION[11]=0.4.0
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[11]=.tar.bz2
+# The name of the source file.
+SOURCE_FILE[11]=${SOURCE_NAME[11]}-${SOURCE_VERSION[11]}${SOURCE_EXT[11]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[11]=$(basename ${SOURCE_FILE[11]} ${SOURCE_EXT[11]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[11]="README COPYING AUTHORS"
+# The URL to download this.
+SOURCE_URL[11]=http://www.kokkinizita.net/linuxaudio/downloads/${SOURCE_FILE[11]}
+
+# REVerber plugin.
+#
+# The name of the source-file
+SOURCE_NAME[12]=REV-plugins
+# The version number of the source file.
+SOURCE_VERSION[12]=0.3.1
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[12]=.tar.bz2
+# The name of the source file.
+SOURCE_FILE[12]=${SOURCE_NAME[12]}-${SOURCE_VERSION[12]}${SOURCE_EXT[12]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[12]=$(basename ${SOURCE_FILE[12]} ${SOURCE_EXT[12]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[12]="README COPYING AUTHORS"
+# The URL to download this.
+SOURCE_URL[12]=http://www.kokkinizita.net/linuxaudio/downloads/${SOURCE_FILE[12]}
+
+# VCOscilator plugin.
+#
+# The name of the source-file
+SOURCE_NAME[13]=VCO-plugins
+# The version number of the source file.
+SOURCE_VERSION[13]=0.3.0
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[13]=.tar.bz2
+# The name of the source file.
+SOURCE_FILE[13]=${SOURCE_NAME[13]}-${SOURCE_VERSION[13]}${SOURCE_EXT[13]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[13]=$(basename ${SOURCE_FILE[13]} ${SOURCE_EXT[13]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[13]="README COPYING AUTHORS"
+# The URL to download this.
+SOURCE_URL[13]=http://www.kokkinizita.net/linuxaudio/downloads/${SOURCE_FILE[13]}
+
+# vocoder plugin.
+#
+# The name of the source-file
+SOURCE_NAME[14]=vocoder
+# The version number of the source file.
+SOURCE_VERSION[14]=0.3
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[14]=.tgz
+# The name of the source file.
+SOURCE_FILE[14]=${SOURCE_NAME[14]}-ladspa-${SOURCE_VERSION[14]}${SOURCE_EXT[14]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[14]=${SOURCE_NAME[14]}-${SOURCE_VERSION[14]}
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[14]="README COPYRIGHT"
+# The URL to download this.
+SOURCE_URL[14]=http://www.sirlab.de/linux/download/${SOURCE_FILE[14]}
+
+# Wave Sculpting Plugins (WASP).
+#
+# The name of the source-file
+SOURCE_NAME[15]=wasp
+# The version number of the source file.
+SOURCE_VERSION[15]=0.1.4
+# Extension of the source file (if you change this, make sure to change the
+# untar command below).
+SOURCE_EXT[15]=.tar.bz2
+# The name of the source file.
+SOURCE_FILE[15]=${SOURCE_NAME[15]}-${SOURCE_VERSION[15]}${SOURCE_EXT[15]}
+#The name of the untared/unziped/unwhatever directory (since sometimes it isn't easy to get it from the tar filename)
+EXTRACTED_DIR[15]=$(basename ${SOURCE_FILE[15]} ${SOURCE_EXT[15]})
+#This variable holds files (relative to the unpackaged source file).
+#Note that if AUTODOCDIR is set, these files are ignored
+DOCFILES[15]="AUTHORS LICENSE ChangeLog"
+# The name of the documentation (Optional file)
+WASP_DOCS=${SOURCE_NAME[15]}-docs-${SOURCE_VERSION[15]}${SOURCE_EXT[15]}
+# The URL to download this.
+SOURCE_URL[15]=http://linux01.gwdg.de/~nlissne/wasp/wasp-0.1.4.tar.bz2
+#SOURCE_URL[6]=http://sineshine.com//media/creations/software/${SOURCE_FILE[6]}
+#SOURCE_URL[7]=http://sineshine.com//media/creations/software/$WASP_DOCS
+
+
+#PACKAGE ESPECIFIC COMPILE C/C++ FLAGS (if any)
+#PKGCFLAGS=
+#PKGCXXFLAGS=
+
+#PACKAGE ESPECIFIC CONFIGURE FLAGS
+#PKGCONFIG=""
+
+
+
+#Where to build the package...
+PKG=$TMP/$APPNAME-$VERSION-$ARCH
+
+
+#You should only run this as root (because you need to change permissions)
+if [ ! $UID = 0 ]; then
+    echo "$0: The script isn't being run as root."
+    echo "$0:  No final pkg is going to be made and permissions will not be set"
+    sleep 1
+fi
+
+# Download loop
+echo "$0: Info: Will proceed to download the files. If they are already present"
+echo "$0:       in $SOURCE_DIR, they will not be downloaded again."
+# We'll use -nc to avoid overwritting or numbering files.
+(cd $SOURCE_DIR;
+for url in ${SOURCE_URL[*]} ; do
+    wget -nv -nc --tries=2 $url
+done
+)
+
+if [ ! -d $TMP ]; then
+   mkdir -p $TMP
+fi
+
+#ESSENTIAL CFLAGS/CPPFLAGS
+# The following options are selected based on some Acovea results for FFT, and
+# some other calculations using GCC 3.4 and running in an Opteron. Not totaly
+# fair, but the Intel results seem to be pretty similar.
+#  IF you are compiling for x86_64, you may want to add -fpmath=387 , to have
+#  -ffast-math actually working. (It's faster, so don't worry).
+#   -fprefetch-loop-arrays  Since i486 doesn't support this, it was removed.
+SLKCFLAGS="-march=$ARCH -mtune=$CPU -fstrength-reduce -fstrict-aliasing -ffast-math"
+SLKCXXFLAGS="$SLKCFLAGS"
+SLKCONFIG="--prefix=${INSTALLPREFIX}"
+
+
+#Sanity check. If you ever get this warning, then you are insane.
+if [ "$PKG" = "/" -o "$PKG" = "" ]; then
+  echo "$0: PKG directory is root!"
+  exit
+fi
+
+if [ ! -d $PKG ];
+then
+   mkdir -p $PKG
+else
+   #remove evidence of last build
+   rm -rf $PKG/*
+fi
+
+#Get in the build directory and untar the source file
+cd $PKG
+mkdir -p $PKG/rootdir/$INSTALLPREFIX/lib/ladspa
+# Sometimes, you may need to change this command.
+echo " $(basename $0). Building version $VERSION for $ARCH (Build $BUILD) "
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[0]} ]; then
+    echo "BUILDING AND PACKAGING THE COMPUTER MUSIC TOOLKIT version ${SOURCE_VERSION[0]}"
+    echo " (${SOURCE_DIR}/${SOURCE_FILE[0]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[0]}
+    cd ${EXTRACTED_DIR[0]}
+
+    #Build and install.
+    cd src
+    make targets INSTALL_PLUGINS_DIR=$INSTALLPREFIX/lib/ladspa CXX="g++ $SLKCXXFLAGS" INCLUDES=-I/usr/include/ || exit 1
+    make install INSTALL_PLUGINS_DIR=$PKG/rootdir/$INSTALLPREFIX/lib/ladspa CXX="g++ $SLKCXXFLAGS" INCLUDES=-I/usr/include/ || exit 1
+    cd ..
+
+    
+    for i in ${DOCFILES[0]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CMT ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CMT
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CMT
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CMT
+            fi
+        fi
+    done
+
+    chmod -x $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CMT/*/*.htm*
+
+    cd $PKG
+else
+    echo "Computer Music Toolkit ($SOURCE_DIR/${SOURCE_FILE[0]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[1]} ]; then
+    echo "BUILDING AND PACKAGING Steve Harris' PLUGINS version ${SOURCE_VERSION[1]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[1]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[1]}
+    cd ${EXTRACTED_DIR[1]}
+
+    # --enable-sse doesn't seems to have any effect...
+    ./configure --prefix=$INSTALLPREFIX CFLAGS="-O3  $SLKCFLAGS" CXXFLAGS="-O3  $SLKCXXFLAGS" i486-slackware-linux || exit 1
+    make || exit 1
+    make install DESTDIR=$PKG/rootdir || exit 1
+
+    for i in ${DOCFILES[1]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/SHW ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/SHW
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/SHW
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/SHW
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "Steve Harris' Plugins ($SOURCE_DIR/${SOURCE_FILE[1]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[2]} ]; then
+    echo "BUILDING AND PACKAGING Tom's Audio Processing PLUGINS version ${SOURCE_VERSION[2]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[2]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[2]}
+    cd ${EXTRACTED_DIR[2]}
+    
+    make INSTALL_PLUGINS_DIR=$INSTALLPREFIX/lib/ladspa  INSTALL_LRDF_DIR=$INSTALLPREFIX/share/ladspa/rdf CC="gcc $SLKCFLAGS" || exit 1
+    make install INSTALL_PLUGINS_DIR=$PKG/rootdir/$INSTALLPREFIX/lib/ladspa  INSTALL_LRDF_DIR=$PKG/rootdir/$INSTALLPREFIX/share/ladspa/rdf CC="gcc $SLKCFLAGS" || exit 1
+
+    for i in ${DOCFILES[2]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "Tom's Audio Processing LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[2]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[3]} ]; then
+    echo "BUILDING AND PACKAGING C* Audio Plugin Suite PLUGINS version ${SOURCE_VERSION[3]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[3]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[3]}
+    cd ${EXTRACTED_DIR[3]}
+
+    make PREFIX=$INSTALLPREFIX OPTS="$SLKCXXFLAGS -O2  -Wall -fPIC -DPIC" || exit 1
+    make PREFIX=$PKG/rootdir/$INSTALLPREFIX install || exit 1
+    make PREFIX=$PKG/rootdir/$INSTALLPREFIX rdf-install || exit 1
+    # make pdf 
+
+    for i in ${DOCFILES[3]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CAPS ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CAPS
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CAPS
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/CAPS
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "C* Audio Plugin Suite LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[3]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[4]} ]; then
+    echo "BUILDING AND PACKAGING VLevel PLUGIN version ${SOURCE_VERSION[4]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[4]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[4]}
+    cd ${EXTRACTED_DIR[4]}
+    
+    make CXXFLAGS="$SLKCXXFLAGS -O2  -Wall -fPIC -DPIC" PREFIX="$INSTALLPREFIX/bin/" LADSPA_PREFIX="$INSTALLPREFIX/lib/ladspa/" || exit 1
+    mkdir -p $PKG/rootdir/usr/bin || exit 1
+    make install PREFIX="$PKG/rootdir$INSTALLPREFIX/bin" LADSPA_PREFIX="$PKG/rootdir$INSTALLPREFIX/lib/ladspa" || exit 1
+    #Actually they all are useless...
+    # I'm not going to add levelplay, since that requires arts, which is
+    # Evil.
+    #cp utils/raw2wav $PKG/rootdir/usr/bin || exit 1
+
+    for i in ${DOCFILES[4]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VLevel ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VLevel
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VLevel
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VLevel
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "VLevel LADSPA Plugin ($SOURCE_DIR/${SOURCE_FILE[4]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[5]} ]; then
+    echo "BUILDING AND PACKAGING NJL PLUGINS version ${SOURCE_VERSION[5]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[5]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[5]}
+    cd ${EXTRACTED_DIR[5]}
+
+    gcc -Wall -shared -Xlinker -Bdynamic -O2 $SLKCFLAGS -fPIC -o noise_1921.so noise_1921.c -lm || exit 1
+	gcc -Wall -shared -Xlinker -Bdynamic -O2 $SLKCFLAGS -fPIC -o noise_1922.so noise_1922.c -lm || exit 1
+	gcc -Wall -shared -Xlinker -Bdynamic -O2 $SLKCFLAGS -fPIC -o eir_1923.so eir_1923.c -lm || exit 1
+    # Actually this is the only one which is really interesting...
+	gcc -Wall -shared -Xlinker -Bdynamic -O2 $SLKCFLAGS -fPIC -o risset_1924.so risset_1924.c -lm || exit 1
+
+    mkdir -p $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+    cp {noise_1921,noise_1922,eir_1923,risset_1924}.so $PKG/rootdir$INSTALLPREFIX/lib/ladspa || exit 1
+
+    for i in ${DOCFILES[5]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/NJL ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/NJL
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/NJL
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/NJL
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "NJL LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[5]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[6]} ]; then
+    echo "BUILDING AND PACKAGING Bandlimited Oscillator PLUGINS version ${SOURCE_VERSION[6]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[6]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[6]}
+    cd ${EXTRACTED_DIR[6]}
+
+    ./configure --prefix=$INSTALLPREFIX --with-ladspa-prefix=$INSTALLPREFIX --with-ladspa-plugin-dir=$INSTALLPREFIX/lib/ladspa i486-slackware-linux || exit 1
+    make CC="i486-slackware-linux-gcc $SLKCFLAGS" || exit 1
+    make install DESTDIR=$PKG/rootdir || exit 1
+
+    # This tool could be really interesting for some developers.
+    mkdir -p $PKG/rootdir/usr/bin
+    cp src/wavegen $PKG/rootdir$INSTALLPREFIX/bin
+
+    mkdir -p $PKG/rootdir/usr/share/ladspa/rdf
+    cp doc/*.rdf $PKG/rootdir/usr/share/ladspa/rdf
+
+    for i in ${DOCFILES[6]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/BLOP ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/BLOP
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/BLOP
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/BLOP
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "Bandlimited Oscillator Plugins ($SOURCE_DIR/${SOURCE_FILE[6]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[7]} ]; then
+    echo "BUILDING AND PACKAGING VCF PLUGINS version ${SOURCE_VERSION[7]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[7]})"
+    tar jxf $SOURCE_DIR/${SOURCE_FILE[7]}
+    cd ${EXTRACTED_DIR[7]}
+
+    # Have to choose only one version because they share the LADSPA plugin ID.
+    # Apparently the CV input version seems to work the same as the normal
+    # version when the extra inputs aren't connected.
+    # CV input...
+    gcc $SLKCFLAGS -O2  -c -fPIC -o vcf_cv_in.o vcf.so.c -DWITH_CV_IN || exit 1
+    gcc  -shared -o vcf_cv_in.so vcf_cv_in.o -lm || exit 1
+
+    # Normal...
+    #gcc $SLKCFLAGS -O2  -c -fPIC -o vcf.o vcf.so.c || exit 1
+    #gcc  -shared -o vcf.so vcf.o -lm || exit 1
+
+    mkdir -p $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+    cp *.so $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+
+    cd $PKG
+else
+    echo "VCF LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[7]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[8]} ]; then
+    echo "BUILDING AND PACKAGING Omins PLUGINS version ${SOURCE_VERSION[8]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[8]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[8]}
+    cd ${EXTRACTED_DIR[8]}
+
+    ./configure --prefix=$INSTALLPREFIX --with-ladspa-dir=$INSTALLPREFIX/lib/ladspa CFLAGS="$SLKCFLAGS" i486-slackware-linux || exit 1
+    make || exit 1
+
+    mkdir -p $PKG/rootdir/$INSTALLPREFIX/lib/ladspa
+    (cd src
+	for file in *.la; do \
+	  sofile=`basename $file .la`.so; \
+	  cp .libs/$sofile $PKG/rootdir$INSTALLPREFIX/lib/ladspa; \
+	done
+    )
+
+    for i in ${DOCFILES[8]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/Omins ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/Omins
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/Omins
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/Omins
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "Omins Plugins ($SOURCE_DIR/${SOURCE_FILE[8]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[9]} ]; then
+    echo "BUILDING AND PACKAGING AMBience PLUGINS version ${SOURCE_VERSION[9]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[9]})"
+    tar jxf $SOURCE_DIR/${SOURCE_FILE[9]}
+    cd ${EXTRACTED_DIR[9]}
+
+    make CPPFLAGS="$SLKCXXFLAGS" || exit 1
+
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCXXFLAGS -O2  -c -o ambis1.o ambis1.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCXXFLAGS -O2  -c -o ambis1_if.o ambis1_if.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCXXFLAGS -O2  -c -o exp2ap.o exp2ap.cc || exit 1
+    #g++ -shared ambis1.o ambis1_if.o exp2ap.o -o ambis1.so || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCXXFLAGS -O2  -c -o ambis2.o ambis2.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCXXFLAGS -O2  -c -o ambis2_if.o ambis2_if.cc || exit 1
+    #g++ -shared ambis2.o ambis2_if.o exp2ap.o -o ambis2.so || exit 1
+
+    mkdir -p $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+    cp *.so $PKG/rootdir$INSTALLPREFIX/lib/ladspa || exit 1
+
+    for i in ${DOCFILES[9]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/AMB ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/AMB
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/AMB
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/AMB
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "AMBience LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[9]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[10]} ]; then
+    echo "BUILDING AND PACKAGING FIL PLUGINS version ${SOURCE_VERSION[10]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[10]})"
+    tar jxf $SOURCE_DIR/${SOURCE_FILE[10]}
+    cd ${EXTRACTED_DIR[10]}
+
+    make CPPFLAGS="$SLKCFLAGS" || exit 1
+
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o filters.o filters.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o filters_if.o filters_if.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o exp2ap.o exp2ap.cc || exit 1
+    #g++  -shared filters.o filters_if.o exp2ap.o -o filters.so || exit 1
+
+    mkdir -p $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+    cp *.so $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+
+    for i in ${DOCFILES[10]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/FIL ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/FIL
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/FIL
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/FIL
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "FIL LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[10]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[11]} ]; then
+    echo "BUILDING AND PACKAGING MCP PLUGINS version ${SOURCE_VERSION[11]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[11]})"
+    tar jxf $SOURCE_DIR/${SOURCE_FILE[11]}
+    cd ${EXTRACTED_DIR[11]}
+
+    make CPPFLAGS="$SLKCFLAGS"
+
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o mvclpf24.o mvclpf24.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o mvclpf24_if.o mvclpf24_if.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o exp2ap.o exp2ap.cc || exit 1
+    #g++  -shared  mvclpf24.o mvclpf24_if.o exp2ap.o -o mvclpf24.so || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o mvchpf24.o mvchpf24.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o mvchpf24_if.o mvchpf24_if.cc || exit 1
+    #g++  -shared  mvchpf24.o mvchpf24_if.o exp2ap.o -o mvchpf24.so || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o cs_phaser.o cs_phaser.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o cs_phaser_if.o cs_phaser_if.cc || exit 1
+    #g++  -shared cs_phaser.o cs_phaser_if.o exp2ap.o -o cs_phaser.so || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o cs_chorus.o cs_chorus.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o cs_chorus_if.o cs_chorus_if.cc || exit 1
+    #g++  -shared  cs_chorus.o cs_chorus_if.o exp2ap.o -o cs_chorus.so || exit 1
+
+    mkdir -p $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+    cp *.so $PKG/rootdir$INSTALLPREFIX/lib/ladspa || exit 1
+
+    for i in ${DOCFILES[11]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/MCP ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/MCP
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/MCP
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/MCP
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "MCP LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[11]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[12]} ]; then
+    echo "BUILDING AND PACKAGING REVerb PLUGIN version ${SOURCE_VERSION[12]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[12]})"
+    tar jxf $SOURCE_DIR/${SOURCE_FILE[12]}
+    cd ${EXTRACTED_DIR[12]}
+
+    make CPPFLAGS="$SLKCFLAGS" || exit 1
+
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o greverb.o greverb.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o g2reverb.o g2reverb.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o g2reverb_if.o g2reverb_if.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O2  -c -o exp2ap.o exp2ap.cc || exit 1
+    #g++  -shared greverb.o g2reverb.o g2reverb_if.o exp2ap.o -o g2reverb.so || exit 1
+
+
+    mkdir -p $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+    cp *.so $PKG/rootdir$INSTALLPREFIX/lib/ladspa || exit 1
+
+    for i in ${DOCFILES[12]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/REV ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/REV
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/REV
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/REV
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "REVerb LADSPA Plugin ($SOURCE_DIR/${SOURCE_FILE[12]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[13]} ]; then
+    echo "BUILDING AND PACKAGING VCOscilator PLUGIN version ${SOURCE_VERSION[13]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[13]})"
+    tar jxf $SOURCE_DIR/${SOURCE_FILE[13]}
+    cd ${EXTRACTED_DIR[13]}
+
+    make CPPFLAGS="$SLKCFLAGS"
+
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O3  -c -o blvco.o blvco.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O3  -c -o blvco_if.o blvco_if.cc || exit 1
+    #g++  -I. -fPIC -D_REENTRANT -Wall $SLKCFLAGS -O3  -c -o exp2ap.o exp2ap.cc || exit 1
+    #g++  -shared  blvco.o blvco_if.o exp2ap.o -o blvco.so || exit 1
+
+    mkdir -p $PKG/rootdir$INSTALLPREFIX/lib/ladspa
+    cp *.so $PKG/rootdir$INSTALLPREFIX/lib/ladspa || exit 1
+
+    for i in ${DOCFILES[13]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VCO ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VCO
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VCO
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/VCO
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "VCO LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[13]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[14]} ]; then
+    echo "BUILDING AND PACKAGING Vocoder PLUGIN version ${SOURCE_VERSION[14]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[14]})"
+    tar zxf $SOURCE_DIR/${SOURCE_FILE[14]}
+    cd ${EXTRACTED_DIR[14]}
+    
+    make INSTALL_PLUGINS_DIR=$INSTALLPREFIX/lib/ladspa  INSTALL_LRDF_DIR=$INSTALLPREFIX/share/ladspa/rdf CC="gcc $SLKCFLAGS" || exit 1
+    make install INSTALL_PLUGINS_DIR=$PKG/rootdir/$INSTALLPREFIX/lib/ladspa  CC="gcc $SLKCFLAGS" || exit 1
+
+    for i in ${DOCFILES[14]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/TAP
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "Vocoder LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[14]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+if [ -e $SOURCE_DIR/${SOURCE_FILE[15]} ]; then
+    echo "BUILDING AND PACKAGING Wave Sculpting PLUGINS version ${SOURCE_VERSION[15]}"
+    echo " ($SOURCE_DIR/${SOURCE_FILE[15]})"
+    tar jxf $SOURCE_DIR/${SOURCE_FILE[15]}
+    cd ${EXTRACTED_DIR[15]}
+
+    make CC="gcc $SLKCFLAGS" INSTALL_PATH=$INSTALLPREFIX/lib/ladspa || exit 1
+    make install RPM_BUILD_ROOT=$PKG/rootdir INSTALL_PATH=$INSTALLPREFIX/lib/ladspa || exit 1
+
+    if [ -e $SOURCE_DIR/$WASP_DOCS ]; then
+        echo "Documentation found ($SOURCE_DIR/$WASP_DOCS). Packaging..."
+        tar jxf $SOURCE_DIR/$WASP_DOCS
+        (cd $(basename $WASP_DOCS ${SOURCE_EXT[15]})
+        mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/WASP
+        cp -r * $PKG/rootdir/usr/doc/$APPNAME-$VERSION/WASP
+        )
+    fi
+
+    for i in ${DOCFILES[15]}; do
+        if [ -e $i ]; then
+            if [ ! -d $PKG/rootdir/usr/doc/$APPNAME-$VERSION/WASP ]; then
+                mkdir -p $PKG/rootdir/usr/doc/$APPNAME-$VERSION/WASP
+            fi
+            if [ -L $i -o -d $i ]; then
+                cp -LR $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/WASP
+            else
+                cp $i $PKG/rootdir/usr/doc/$APPNAME-$VERSION/WASP
+            fi
+        fi
+    done
+
+    cd $PKG
+else
+    echo "WAve Sculpting LADSPA Plugins ($SOURCE_DIR/${SOURCE_FILE[15]}) not found. Skipping."
+fi
+
+#DEBUG
+#sh
+
+
+#Package especific things follow: (do something especific to this package (fix or copy things which are wrong in the installer, etc)
+
+# Is there an easier way to do this in bash? IIRC in csh I can [-z /<path>] to
+# see if it's empty...
+if [ -z "`ls ${PKG}/rootdir/${INSTALLPREFIX}/lib/ladspa`" ]; then
+    echo "No plugins have been installed. Check for build errors!"
+    sleep 5
+    exit 1
+fi
+
+ldd $PKG/rootdir$INSTALLPREFIX/lib/ladspa/*.so* >& /dev/null
+[ $? != 0 ] && echo "Something might have gone wrong with the comilation/linking/installing. LDD detected some error." && sleep 1
+
+#END of package especific things.
+
+#gzip man and info pages
+if [ ! "$GZIPMAN" = "0" ]; then
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/man ]; then
+      gzip -9q $PKG/rootdir/$INSTALLPREFIX/man/*/*
+   fi
+   if [ -d $PKG/rootdir/$INSTALLPREFIX/share/man ]; then
+       gzip -9q $PKG/rootdir/$INSTALLPREFIX/share/man/*/*
+   fi
+fi
+if [ -d $PKG/rootdir/$INSTALLPREFIX/info ]; then
+    rm -f $PKG/rootdir/$INSTALLPREFIX/info/dir
+    if [ ! "$GZIPINFO" = "0" ]; then
+       gzip -9q $PKG/rootdir/$INSTALLPREFIX/info/*
+    fi
+fi
+
+cd $PKG/rootdir
+
+#strip executables (this was taken from some SlackBuilds from Pat himself)
+if [ ! "$STRIPEXE" = "0" ]; then
+    (
+      find . | xargs file | grep "executable" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "shared object" | grep ELF | cut -f 1 -d : | xargs strip 2> /dev/null
+      find . | xargs file | grep "current ar archive" | cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+    )
+fi
+
+ 
+mkdir install
+
+#Here comes the slac-desc (yes it is inside the script)
+cat > install/slack-desc <<_EOS_
+        |-----handy-ruler------------------------------------------------------|
+
+$APPNAME: $APPNAME ($VERSION) Collection of LADSPA plugins.
+$APPNAME: 
+$APPNAME: This is a collection of some of the most widely used LADSPA plugins.
+$APPNAME: 
+$APPNAME: You need an LADSPA aware application to use them (you can use the
+$APPNAME: applications which come with the LADSPA SDK, or use Ardour/Ecasound
+$APPNAME: and some others).
+$APPNAME: 
+$APPNAME: After installed, you may want to run listplugins (*requires
+$APPNAME: ladspa-sdk package installed*) to see what plugins you have.
+$APPNAME: 
+$APPNAME: This package includes:
+_EOS_
+#                                                     |-----handy-ruler------------------------------------------------------|
+[ -e $SOURCE_DIR/${SOURCE_FILE[0]} ] && echo "$APPNAME:  *Computer Music Toolkit (CMT) ${SOURCE_VERSION[0]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[1]} ] && echo "$APPNAME:  *Steve Harris' Plugin collection (SWH) ${SOURCE_VERSION[1]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[2]} ] && echo "$APPNAME:  *Tom's Audio processing LADSPA collection (TAP) ${SOURCE_VERSION[2]}">> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[3]} ] && echo "$APPNAME:  *C* Audio Plugin Suite (CAPS) ${SOURCE_VERSION[3]}">> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[3]} ] && echo "$APPNAME:   (You can read the documentations at http://quitte.de/dsp/caps.html)">> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[4]} ] && echo "$APPNAME:  *VLevel Plugin ${SOURCE_VERSION[4]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[5]} ] && echo "$APPNAME:  *Nick Lamb's Plugins ${SOURCE_VERSION[5]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[6]} ] && echo "$APPNAME:  *Bandlimiting LADSPA Oscillator Plugins (BLOP) ${SOURCE_VERSION[6]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[7]} ] && echo "$APPNAME:  *VCF Equalizer LADSPA Plugins ${SOURCE_VERSION[7]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[8]} ] && echo "$APPNAME:  *Om's Omins LADSPA Plugins ${SOURCE_VERSION[8]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[9]} ] && echo "$APPNAME:  *AMBisonics plugins (thought for ardour) ${SOURCE_VERSION[9]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[10]} ] && echo "$APPNAME:  *FIL equalizer plugins ${SOURCE_VERSION[10]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[11]} ] && echo "$APPNAME:  *MCP Mooler plugins ${SOURCE_VERSION[11]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[12]} ] && echo "$APPNAME:  *REVerb plugin ${SOURCE_VERSION[12]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[13]} ] && echo "$APPNAME:  *VCO plugins ${SOURCE_VERSION[13]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[14]} ] && echo "$APPNAME:  *Vocoder plugin ${SOURCE_VERSION[14]}" >> install/slack-desc
+[ -e $SOURCE_DIR/${SOURCE_FILE[15]} ] && echo "$APPNAME:  *WAve Sculpting Plugins ${SOURCE_VERSION[15]}" >> install/slack-desc
+
+
+#This is for linuxpackages.net packages:
+cat > install/slack-required <<_EOS_
+ladspa-sdk
+_EOS_
+[ -e $SOURCE_DIR/${SOURCE_FILE[1]} ] && echo "fftw3" >> install/slack-required
+[ -e $SOURCE_DIR/${SOURCE_FILE[4]} ] && echo "sox" >> install/slack-required
+
+#Copy ourselfs
+mkdir -p usr/src/slackbuilds/
+cat $CWD/$0 > usr/src/slackbuilds/$APPNAME-$VERSION-$ARCH-$BUILD.SlackBuild
+
+
+if [ $UID = 0 ]; then
+    #Almost-safe default:
+    chown -R root:root *
+fi
+
+find . -perm 664 -exec chmod 644 {} \;
+find . -perm 600 -exec chmod 644 {} \;
+find . -perm 444 -exec chmod 644 {} \;
+find . -perm 400 -exec chmod 644 {} \;
+find . -perm 440 -exec chmod 644 {} \;
+find . -perm 777 -exec chmod 755 {} \;
+find . -perm 775 -exec chmod 755 {} \;
+find . -perm 511 -exec chmod 755 {} \;
+find . -perm 711 -exec chmod 755 {} \;
+find . -perm 555 -exec chmod 755 {} \;
+find . -perm 666 -exec chmod 644 {} \;
+find . -perm 2775 -exec chmod 755 {} \;
+find . -perm 2755 -exec chmod 755 {} \;
+find . -perm 2711 -exec chmod 755 {} \;
+find . -perm 2751 -exec chmod 755 {} \;
+find . -perm 2555 -exec chmod 755 {} \;
+find . -perm 2511 -exec chmod 755 {} \;
+#Fix some other permision problems:
+#Maybe add/remove suid bits which are necesary.
+
+# Make sure the libs are executables.
+chmod 755 .$INSTALLPREFIX/lib/ladspa/*
+
+#End fix of other permission problems.
+
+ldd .$INSTALLPREFIX/lib/ladspa/*.so* >& $PKG/ldd_log
+[ $? != 0 ] && echo "Something might have gone wrong with the comilation/linking/installing/stripping. LDD detected some error." && sleep 1
+ 
+
+if [ $UID = 0 ]; then
+    #Here goes the package :)
+    /sbin/makepkg -l y -c n ../$APPNAME-$VERSION-$ARCH-$BUILD.tgz
+
+    #cleanup and we're done.
+    cd ..
+    rm -rf rootdir
+    rm -rf ${EXTRACTED_DIR[*]}
+fi

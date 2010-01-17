@@ -1,0 +1,5 @@
+ChucK is a new (and developing) audio programming language for real-time synthesis, composition, performance, and now, analysis - fully supported on MacOS X, Windows, and Linux. ChucK presents a new time-based, concurrent programming model that's highly precise and expressive (we call this strongly-timed), as well as dynamic control rates, and the ability to add and modify code on-the-fly. In addition, ChucK supports MIDI, OSC, HID device, and multi-channel audio. It's fun and easy to learn, and offers composers, researchers, and performers a powerful programming tool for building and experimenting with complex audio synthesis/analysis programs, and real-time interactive control.
+
+ChucK can be built with ALSA or JACK support (You have to choose one). By default this SlackBuild will build with JACK support since that is what I use (and see no point in using ChucK without JACK) and what I have tested more throughly. If you want to build for ALSA you'll need to set the USE_ALSA environment variable to YES (i.e. USE_ALSA=YES ./chuck.SlackBuild).
+
+ChucK needs libsndfile installed, which can be found at SlackBuilds.
