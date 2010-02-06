@@ -5,8 +5,8 @@
 # NOTE: You should check all the script, and you'll most likely end up changing
 # something down below.
 
-#Build Script for APP (tested with version(s) x)
-# It can be obtained at URL
+#Build Script for APP (tested with version(s) 1.0.0)
+# It can be obtained at http://www.digikam.org/
 #
 
 # CWD holds the current directory. Lots of things will be relative to it.
@@ -14,7 +14,7 @@ CWD=$(pwd)
 #This is the name the package will receive. It is usually the application name.
 APPNAME=digikam
 #This is the version number the package will receive. It is usually the application version.
-VERSION=1.0.0
+VERSION=1.1.0
 #The target architecture. Slackware uses 486 for most of its packages, and that's a
 # recommended setting in linuxpackages.net
 # In the case of x86, an 486 binary can be run in any 486 and more recent
