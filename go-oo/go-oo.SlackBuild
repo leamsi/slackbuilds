@@ -31,7 +31,7 @@
 # Thsnks to necropresto for better x86_64 support
 
 PRGNAM=openoffice.org
-VERSION=3.1.0
+VERSION=3.2
 ARCH=${ARCH:-i586}
 BUILD=${BUILD:-5}
 TAG=${TAG:-_SBo}
@@ -56,57 +56,57 @@ PKG_LANG=$(echo $OOLANG | sed s/-/_/)	# Leave this alone
 WJRE=${WJRE:-no}
 
 # Files to download:
-cat > $CWD/files.txt <<_EOF_
-ooobasis3.1-base-3.1.0-9399.i586.rpm
-ooobasis3.1-binfilter-3.1.0-9399.i586.rpm
-ooobasis3.1-calc-3.1.0-9399.i586.rpm
-ooobasis3.1-core01-3.1.0-9399.i586.rpm
-ooobasis3.1-core02-3.1.0-9399.i586.rpm
-ooobasis3.1-core03-3.1.0-9399.i586.rpm
-ooobasis3.1-core04-3.1.0-9399.i586.rpm
-ooobasis3.1-core05-3.1.0-9399.i586.rpm
-ooobasis3.1-core06-3.1.0-9399.i586.rpm
-ooobasis3.1-core07-3.1.0-9399.i586.rpm
-ooobasis3.1-draw-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-base-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-binfilter-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-calc-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-draw-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-help-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-impress-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-math-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-res-3.1.0-9399.i586.rpm
-ooobasis3.1-$OOLANG-writer-3.1.0-9399.i586.rpm
-ooobasis3.1-gnome-integration-3.1.0-9399.i586.rpm
-ooobasis3.1-graphicfilter-3.1.0-9399.i586.rpm
-ooobasis3.1-images-3.1.0-9399.i586.rpm
-ooobasis3.1-impress-3.1.0-9399.i586.rpm
-ooobasis3.1-javafilter-3.1.0-9399.i586.rpm
-ooobasis3.1-kde-integration-3.1.0-9399.i586.rpm
-ooobasis3.1-math-3.1.0-9399.i586.rpm
-ooobasis3.1-ooofonts-3.1.0-9399.i586.rpm
-ooobasis3.1-ooolinguistic-3.1.0-9399.i586.rpm
-ooobasis3.1-pyuno-3.1.0-9399.i586.rpm
-ooobasis3.1-testtool-3.1.0-9399.i586.rpm
-ooobasis3.1-writer-3.1.0-9399.i586.rpm
-ooobasis3.1-xsltfilter-3.1.0-9399.i586.rpm
-ooobasis3.1-extension-mediawiki-publisher-3.1.0-9399.i586.rpm
-ooobasis3.1-extension-pdf-import-3.1.0-9399.i586.rpm
-ooobasis3.1-extension-presentation-minimizer-3.1.0-9399.i586.rpm
-ooobasis3.1-extension-presenter-screen-3.1.0-9399.i586.rpm
-ooobasis3.1-extension-report-builder-3.1.0-9399.i586.rpm
-openoffice.org-ure-1.5.0-9399.i586.rpm
-openoffice.org3-3.1.0-9399.i586.rpm
-openoffice.org3-base-3.1.0-9399.i586.rpm
-openoffice.org3-calc-3.1.0-9399.i586.rpm
-openoffice.org3-draw-3.1.0-9399.i586.rpm
-openoffice.org3-$OOLANG-3.1.0-9399.i586.rpm
-openoffice.org3-impress-3.1.0-9399.i586.rpm
-openoffice.org3-math-3.1.0-9399.i586.rpm
-openoffice.org3-writer-3.1.0-9399.i586.rpm
-openoffice.org3.1-freedesktop-menus-3.1-9399.noarch.rpm
-_EOF_
+#cat > $CWD/files.txt <<_EOF_
+#ooobasis3.1-base-3.1.0-9399.i586.rpm
+#ooobasis3.1-binfilter-3.1.0-9399.i586.rpm
+#ooobasis3.1-calc-3.1.0-9399.i586.rpm
+#ooobasis3.1-core01-3.1.0-9399.i586.rpm
+#ooobasis3.1-core02-3.1.0-9399.i586.rpm
+#ooobasis3.1-core03-3.1.0-9399.i586.rpm
+#ooobasis3.1-core04-3.1.0-9399.i586.rpm
+#ooobasis3.1-core05-3.1.0-9399.i586.rpm
+#ooobasis3.1-core06-3.1.0-9399.i586.rpm
+#ooobasis3.1-core07-3.1.0-9399.i586.rpm
+#ooobasis3.1-draw-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-base-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-binfilter-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-calc-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-draw-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-help-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-impress-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-math-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-res-3.1.0-9399.i586.rpm
+#ooobasis3.1-$OOLANG-writer-3.1.0-9399.i586.rpm
+#ooobasis3.1-gnome-integration-3.1.0-9399.i586.rpm
+#ooobasis3.1-graphicfilter-3.1.0-9399.i586.rpm
+#ooobasis3.1-images-3.1.0-9399.i586.rpm
+#ooobasis3.1-impress-3.1.0-9399.i586.rpm
+#ooobasis3.1-javafilter-3.1.0-9399.i586.rpm
+#ooobasis3.1-kde-integration-3.1.0-9399.i586.rpm
+#ooobasis3.1-math-3.1.0-9399.i586.rpm
+#ooobasis3.1-ooofonts-3.1.0-9399.i586.rpm
+#ooobasis3.1-ooolinguistic-3.1.0-9399.i586.rpm
+#ooobasis3.1-pyuno-3.1.0-9399.i586.rpm
+#ooobasis3.1-testtool-3.1.0-9399.i586.rpm
+#ooobasis3.1-writer-3.1.0-9399.i586.rpm
+#ooobasis3.1-xsltfilter-3.1.0-9399.i586.rpm
+#ooobasis3.1-extension-mediawiki-publisher-3.1.0-9399.i586.rpm
+#ooobasis3.1-extension-pdf-import-3.1.0-9399.i586.rpm
+#ooobasis3.1-extension-presentation-minimizer-3.1.0-9399.i586.rpm
+#ooobasis3.1-extension-presenter-screen-3.1.0-9399.i586.rpm
+#ooobasis3.1-extension-report-builder-3.1.0-9399.i586.rpm
+#openoffice.org-ure-1.5.0-9399.i586.rpm
+#openoffice.org3-3.1.0-9399.i586.rpm
+#openoffice.org3-base-3.1.0-9399.i586.rpm
+#openoffice.org3-calc-3.1.0-9399.i586.rpm
+#openoffice.org3-draw-3.1.0-9399.i586.rpm
+#openoffice.org3-$OOLANG-3.1.0-9399.i586.rpm
+#openoffice.org3-impress-3.1.0-9399.i586.rpm
+#openoffice.org3-math-3.1.0-9399.i586.rpm
+#openoffice.org3-writer-3.1.0-9399.i586.rpm
+#openoffice.org3.1-freedesktop-menus-3.1-9399.noarch.rpm
+#_EOF_
 
 # If you want to disable java support by removing executable permissions
 # form OOo's java loader (this will not affect other apps), set this
@@ -155,7 +155,8 @@ mkdir -p $TMP/$SOURCEDIR
 cd $TMP/$SOURCEDIR/
 pwd
 
-wget -nc -i $CWD/files.txt -B http://go-oo.mirrorbrain.org/stable/linux-i586/3.1/
+#wget -nc -i $CWD/files.txt -B http://go-oo.mirrorbrain.org/stable/linux-i586/3.1/
+python $CWD/download-go-oo.py
 
 #mv desktop-integration/openoffice.org3.1-freedesktop-menus-3.1-9393.noarch.rpm .
 #rm *onlineupdate*.rpm # We don't want this
@@ -174,7 +175,7 @@ cd $PKG/usr/bin
 cd -
 
 # Remove DejaVu and Liberation fonts - these are included in other packages
-rm -f opt/openoffice.org/basis3.1/share/fonts/truetype/[DL]*.ttf
+rm -f opt/openoffice.org/basis3.2/share/fonts/truetype/[DL]*.ttf
 
 # Fix Exec commands in the desktop files
 # See http://bugzilla.xfce.org/show_bug.cgi?id=2430 
